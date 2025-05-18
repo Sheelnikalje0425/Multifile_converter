@@ -1,0 +1,82 @@
+/* === Basic Styling === */
+body {
+    background: linear-gradient(135deg, #e0f7fa, #e1bee7);
+    font-family: 'Poppins', sans-serif;
+    padding-top: 50px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 900px;
+    background: white;
+    padding: 40px 30px;
+    border-radius: 20px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.05);
+    animation: fadeInUp 0.8s ease;
+}
+
+h2 {
+    margin-bottom: 30px;
+    font-weight: 600;
+    animation: fadeInDown 0.8s ease;
+}
+
+/* === Form and Button Styling === */
+.btn-check:checked + .btn {
+    background-color: #673ab7;
+    color: #fff;
+    border-color: #5e35b1;
+    transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(103, 58, 183, 0.4);
+}
+
+.btn {
+    transition: all 0.3s ease-in-out;
+    font-weight: 500;
+    border-radius: 10px;
+}
+
+.btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.btn-outline-danger:hover {
+    background-color: #d32f2f;
+    border-color: #c62828;
+}
+
+/* === File Input === */
+input[type="file"] {
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ced4da;
+}
+
+/* === Password Field === */
+#passwordField {
+    transition: all 0.5s ease-in-out;
+}
+
+/* === Animations === */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

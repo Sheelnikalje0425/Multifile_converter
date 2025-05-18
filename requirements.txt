@@ -1,0 +1,6 @@
+Flask
+docx2pdf
+pdf2docx
+img2pdf
+pdf2image
+Pillow
