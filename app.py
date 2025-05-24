@@ -4,7 +4,7 @@ import os
 import shutil
 from werkzeug.utils import secure_filename
 
-# Libraries for conversion
+# Libraries
 from docx2pdf import convert as docx2pdf_convert
 from pdf2docx import Converter as PDF2DocxConverter
 import img2pdf
@@ -40,13 +40,11 @@ def convert_file():
             for file in files:
                 if not file.filename.endswith('.pdf'):
                     return 'All files must be PDF for merging.'
-
             merger = PdfMerger()
             for file in files:
                 input_path = os.path.join(tmpdir, secure_filename(file.filename))
                 file.save(input_path)
                 merger.append(input_path)
-
             output_path = os.path.join(tmpdir, 'merged.pdf')
             merger.write(output_path)
             merger.close()
@@ -55,38 +53,54 @@ def convert_file():
         elif conversion_type == 'protect_pdf':
             if len(files) != 1:
                 return 'Upload only one PDF to protect.'
-
             password = request.form.get('password')
             if not password:
                 return 'Please provide a password.'
-
             file = files[0]
             if not file.filename.endswith('.pdf'):
                 return 'Please upload a PDF file.'
-
             input_path = os.path.join(tmpdir, secure_filename(file.filename))
             file.save(input_path)
-
             reader = PdfReader(input_path)
             writer = PdfWriter()
-
             for page in reader.pages:
                 writer.add_page(page)
-
             writer.encrypt(password)
-
             output_path = os.path.join(tmpdir, 'protected.pdf')
             with open(output_path, 'wb') as f:
                 writer.write(f)
+            output_files.append(output_path)
 
+        elif conversion_type == 'remove_pages':
+            if len(files) != 1:
+                return 'Upload only one PDF to modify.'
+            pages_input = request.form.get('remove_pages_input')
+            if not pages_input:
+                return 'Please enter page numbers to remove.'
+            file = files[0]
+            if not file.filename.endswith('.pdf'):
+                return 'Please upload a PDF file.'
+            try:
+                pages_to_remove = [int(p.strip()) - 1 for p in pages_input.split(',')]
+            except:
+                return 'Invalid page number format. Use comma-separated numbers like 1,3,5.'
+            input_path = os.path.join(tmpdir, secure_filename(file.filename))
+            file.save(input_path)
+            reader = PdfReader(input_path)
+            writer = PdfWriter()
+            total_pages = len(reader.pages)
+            for i in range(total_pages):
+                if i not in pages_to_remove:
+                    writer.add_page(reader.pages[i])
+            output_path = os.path.join(tmpdir, 'pages_removed.pdf')
+            with open(output_path, 'wb') as f:
+                writer.write(f)
             output_files.append(output_path)
 
         else:
             for file in files:
                 input_path = os.path.join(tmpdir, secure_filename(file.filename))
                 file.save(input_path)
-
-                output_path = ""
 
                 if conversion_type == 'word_to_pdf':
                     if not input_path.endswith('.docx'):

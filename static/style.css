@@ -41,9 +41,16 @@ h2 {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
 }
 
+/* === Danger + Warning Button Hover === */
 .btn-outline-danger:hover {
     background-color: #d32f2f;
     border-color: #c62828;
+}
+
+.btn-outline-warning:hover {
+    background-color: #f57c00;
+    border-color: #ef6c00;
+    color: #fff;
 }
 
 /* === File Input === */
@@ -51,11 +58,33 @@ input[type="file"] {
     padding: 12px;
     border-radius: 10px;
     border: 1px solid #ced4da;
+    transition: border 0.3s ease;
 }
 
-/* === Password Field === */
-#passwordField {
+input[type="file"]:focus {
+    border-color: #673ab7;
+    outline: none;
+}
+
+/* === Password & Page Remove Fields === */
+#passwordField,
+#pageRemoveField {
     transition: all 0.5s ease-in-out;
+    animation: fadeInUp 0.4s ease;
+}
+
+/* === Input Field Styling === */
+input[type="text"] {
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    transition: all 0.3s ease;
+}
+
+input[type="text"]:focus {
+    border-color: #673ab7;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(103, 58, 183, 0.1);
 }
 
 /* === Animations === */

@@ -78,13 +78,28 @@
                 <input type="radio" class="btn-check" name="conversion_type" value="protect_pdf" id="protect_pdf" autocomplete="off" onchange="togglePasswordInput()">
                 <label class="btn btn-outline-danger w-100" for="protect_pdf">Protect PDF</label>
             </div>
+
         </div>
+
+        <!-- Row 3 -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-2">
+                    <input type="radio" class="btn-check" name="conversion_type" value="remove_pages" id="remove_pages" autocomplete="off" onchange="togglePasswordInput()" />
+                    <label class="btn btn-outline-primary w-100" for="remove_pages">Remove PDF Pages</label>
+                </div>
+            </div>
 
         <!-- Password Input (Hidden unless "Protect PDF") -->
         <div class="mb-3" id="passwordField" style="display: none;">
             <label for="password" class="form-label">Set PDF Password:</label>
             <input type="text" class="form-control" id="password" name="password" placeholder="Enter password">
         </div>
+
+        <div class="mb-3" id="pageRemoveField" style="display: none;">
+            <label for="remove_pages_input" class="form-label">Enter pages to remove (e.g., 1,3,5):</label>
+            <input type="text" class="form-control" id="remove_pages_input" name="remove_pages_input" placeholder="Page numbers to remove">
+        </div>
+
 
         <!-- File Upload -->
         <div class="mb-3">
@@ -101,15 +116,16 @@
 
 <!-- Password Toggle Script -->
 <script>
-    function togglePasswordInput() {
-        const selectedType = document.querySelector('input[name="conversion_type"]:checked');
-        const passwordField = document.getElementById("passwordField");
-        if (selectedType && selectedType.value === "protect_pdf") {
-            passwordField.style.display = "block";
-        } else {
-            passwordField.style.display = "none";
-        }
-    }
+function togglePasswordInput() {
+    const selectedType = document.querySelector('input[name="conversion_type"]:checked');
+    const passwordField = document.getElementById("passwordField");
+    const pageRemoveField = document.getElementById("pageRemoveField");
+
+    if (!selectedType) return;
+
+    passwordField.style.display = selectedType.value === "protect_pdf" ? "block" : "none";
+    pageRemoveField.style.display = selectedType.value === "remove_pages" ? "block" : "none";
+}
 </script>
 
 </body>
