@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Form Fill - Home</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f8f9fa;
+            color: #212529;
+            transition: background 0.3s, color 0.3s;
+        }
+        body.dark-mode {
+            background: #121212;
+            color: #e0e0e0;
+        }
+        body.dark-mode .navbar {
+            background-color: #1f1f1f !important;
+        }
+        body.dark-mode .navbar .navbar-brand {
+            color: #e0e0e0 !important;
+        }
+        body.dark-mode .drop-zone {
+            border-color: #888;
+            background: #1f1f1f;
+            color: #bbb;
+        }
+        .drop-zone {
+            max-width: 100%;
+            padding: 30px;
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            text-align: center;
+            color: #777;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .drop-zone.dragover {
+            background-color: #e9f5ff;
+            border-color: #0056b3;
+            color: #000;
+        }
+        .drop-zone input {
+            display: none;
+        }
+        .file-item {
+            margin-top: 10px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/">Multi File Converter</a>
+        <button id="themeToggle" class="btn btn-outline-dark ms-auto">
+            🌙 Dark Mode
+        </button>
+    </div>
+</nav>
+
+<!-- Main Section -->
+<div class="container mt-5 text-center">
+    <h2 class="fw-semibold mb-4">PDF Form Fill ✍️</h2>
+    <p class="text-muted">Upload your PDF and start editing it in the editor.</p>
+
+    <form method="POST" action="/formfill/upload" enctype="multipart/form-data">
+    <div class="drop-zone mb-3" id="dropZone">
+        <span>Drag & Drop PDF here or click to upload</span>
+        <input type="file" id="pdfFile" name="pdf" accept=".pdf" required>
+    </div>
+    <div id="filePreview"></div>
+
+    <button type="submit" class="btn btn-success w-100 mt-3">Start Editing</button>
+</form>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Drag & Drop logic
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("pdfFile");
+const preview = document.getElementById("filePreview");
+
+dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+});
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    fileInput.files = e.dataTransfer.files;
+    updatePreview(fileInput.files);
+});
+fileInput.addEventListener("change", () => updatePreview(fileInput.files));
+
+function updatePreview(files) {
+    preview.innerHTML = "";
+    Array.from(files).forEach(file => {
+        if (file.type === "application/pdf") {
+            preview.innerHTML = `<div class="file-item">📄 ${file.name}</div>`;
+        } else {
+            preview.innerHTML = `<div class="file-item text-danger">❌ Invalid file type. Please upload a PDF.</div>`;
+            fileInput.value = "";
+        }
+    });
+}
+
+// Dark Mode
+document.getElementById("themeToggle").addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+});
+</script>
+
+</body>
+</html>

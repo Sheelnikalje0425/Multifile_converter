@@ -3,130 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <title>Multi File Converter</title>
-
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Your CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            transition: background 0.3s, color 0.3s;
+        }
 
+        /* Light Mode Defaults */
+        body {
+            background: #f8f9fa;
+            color: #212529;
+        }
+
+        /* Dark Mode */
+        body.dark-mode {
+            background: #121212;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .navbar {
+            background-color: #1f1f1f !important;
+        }
+
+        body.dark-mode .navbar .navbar-brand {
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .btn-outline-primary,
+        body.dark-mode .btn-outline-danger,
+        body.dark-mode .btn-outline-success,
+        body.dark-mode .btn-outline-warning,
+        body.dark-mode .btn-outline-info,
+        body.dark-mode .btn-outline-secondary {
+            color: #e0e0e0;
+            border-color: #bbb;
+        }
+
+        body.dark-mode .btn-outline-primary:hover,
+        body.dark-mode .btn-outline-danger:hover,
+        body.dark-mode .btn-outline-success:hover,
+        body.dark-mode .btn-outline-warning:hover,
+        body.dark-mode .btn-outline-info:hover,
+        body.dark-mode .btn-outline-secondary:hover {
+            background: #333;
+            color: #fff;
+            border-color: #999;
+        }
+
+        body.dark-mode .form-control,
+        body.dark-mode .form-select {
+            background-color: #1f1f1f;
+            color: #e0e0e0;
+            border: 1px solid #444;
+        }
+
+        body.dark-mode .drop-zone {
+            border-color: #888;
+            background: #1f1f1f;
+            color: #bbb;
+        }
+
+        .drop-zone {
+            max-width: 100%;
+            padding: 30px;
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            text-align: center;
+            color: #777;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .drop-zone.dragover {
+            background-color: #e9f5ff;
+            border-color: #0056b3;
+            color: #000;
+        }
+
+        .drop-zone input {
+            display: none;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+
+        .file-item img {
+            width: 40px;
+            height: auto;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
 
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/">Multi File Converter</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <a class="navbar-brand fw-bold" href="/">Multi File Converter</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item">
-                    <a class="nav-link active" href="/">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/about">About</a>
-                </li>
-            </ul>
-        </div>
+
+        <!-- Dark Mode Toggle Button -->
+        <button id="themeToggle" class="btn btn-outline-dark ms-auto">
+            🌙 Dark Mode
+        </button>
     </div>
 </nav>
 
 <!-- Main Content -->
 <div class="container mt-4 text-center">
-    <h2 class="mb-4">Multi File Converter 🔄</h2>
+    <h2 class="mb-4 fw-semibold">Multi File Converter 🔄</h2>
 
     <form method="POST" action="/convert" enctype="multipart/form-data">
-        <!-- Conversion Options Grid -->
-        <label class="form-label">Select Conversion Type:</label>
+
+        <!-- Conversion Options -->
+        <label class="form-label fw-bold">Select Conversion Type:</label>
+
         <div class="row mb-3">
             <div class="col-md-3">
-                <input type="radio" class="btn-check" name="conversion_type" value="word_to_pdf" id="word_to_pdf" autocomplete="off" required onchange="togglePasswordInput()">
+                <input type="radio" class="btn-check" name="conversion_type" value="word_to_pdf" id="word_to_pdf" required onchange="toggleInputs()">
                 <label class="btn btn-outline-primary w-100" for="word_to_pdf">Word ➔ PDF</label>
             </div>
             <div class="col-md-3">
-                <input type="radio" class="btn-check" name="conversion_type" value="pdf_to_word" id="pdf_to_word" autocomplete="off" onchange="togglePasswordInput()">
+                <input type="radio" class="btn-check" name="conversion_type" value="pdf_to_word" id="pdf_to_word" onchange="toggleInputs()">
                 <label class="btn btn-outline-primary w-100" for="pdf_to_word">PDF ➔ Word</label>
             </div>
             <div class="col-md-3">
-                <input type="radio" class="btn-check" name="conversion_type" value="jpg_to_pdf" id="jpg_to_pdf" autocomplete="off" onchange="togglePasswordInput()">
+                <input type="radio" class="btn-check" name="conversion_type" value="jpg_to_pdf" id="jpg_to_pdf" onchange="toggleInputs()">
                 <label class="btn btn-outline-primary w-100" for="jpg_to_pdf">JPG ➔ PDF</label>
             </div>
             <div class="col-md-3">
-                <input type="radio" class="btn-check" name="conversion_type" value="pdf_to_jpg" id="pdf_to_jpg" autocomplete="off" onchange="togglePasswordInput()">
+                <input type="radio" class="btn-check" name="conversion_type" value="pdf_to_jpg" id="pdf_to_jpg" onchange="toggleInputs()">
                 <label class="btn btn-outline-primary w-100" for="pdf_to_jpg">PDF ➔ JPG</label>
             </div>
         </div>
 
+        <!-- Row 2 -->
         <div class="row mb-3">
             <div class="col-md-3">
-                <input type="radio" class="btn-check" name="conversion_type" value="jpg_to_png" id="jpg_to_png" autocomplete="off" onchange="togglePasswordInput()">
+                <input type="radio" class="btn-check" name="conversion_type" value="jpg_to_png" id="jpg_to_png" onchange="toggleInputs()">
                 <label class="btn btn-outline-primary w-100" for="jpg_to_png">JPG ➔ PNG</label>
             </div>
             <div class="col-md-3">
-                <input type="radio" class="btn-check" name="conversion_type" value="png_to_jpg" id="png_to_jpg" autocomplete="off" onchange="togglePasswordInput()">
+                <input type="radio" class="btn-check" name="conversion_type" value="png_to_jpg" id="png_to_jpg" onchange="toggleInputs()">
                 <label class="btn btn-outline-primary w-100" for="png_to_jpg">PNG ➔ JPG</label>
             </div>
             <div class="col-md-3">
-                <input type="radio" class="btn-check" name="conversion_type" value="merge_pdfs" id="merge_pdfs" autocomplete="off" onchange="togglePasswordInput()">
+                <input type="radio" class="btn-check" name="conversion_type" value="merge_pdfs" id="merge_pdfs" onchange="toggleInputs()">
                 <label class="btn btn-outline-primary w-100" for="merge_pdfs">Merge PDFs</label>
             </div>
             <div class="col-md-3">
-                <input type="radio" class="btn-check" name="conversion_type" value="protect_pdf" id="protect_pdf" autocomplete="off" onchange="togglePasswordInput()">
+                <input type="radio" class="btn-check" name="conversion_type" value="protect_pdf" id="protect_pdf" onchange="toggleInputs()">
                 <label class="btn btn-outline-danger w-100" for="protect_pdf">Protect PDF</label>
             </div>
-
         </div>
 
         <!-- Row 3 -->
-            <div class="row mb-4">
-                <div class="col-md-3 mb-2">
-                    <input type="radio" class="btn-check" name="conversion_type" value="remove_pages" id="remove_pages" autocomplete="off" onchange="togglePasswordInput()" />
-                    <label class="btn btn-outline-primary w-100" for="remove_pages">Remove PDF Pages</label>
-                </div>
+        <div class="row mb-4">
+            <div class="col-md-3 mb-2">
+                <input type="radio" class="btn-check" name="conversion_type" value="remove_pages" id="remove_pages" onchange="toggleInputs()" />
+                <label class="btn btn-outline-primary w-100" for="remove_pages">Remove PDF Pages</label>
             </div>
 
-        <!-- Password Input (Hidden unless "Protect PDF") -->
+            <div class="col-md-3 mb-2">
+                <input type="radio" class="btn-check" name="conversion_type" value="ocr" id="ocr" onchange="toggleInputs()" />
+                <label class="btn btn-outline-success w-100" for="ocr">Image/PDF ➔ Text</label>
+            </div>
+
+            <div class="col-md-3 mb-2">
+                <input type="radio" class="btn-check" name="conversion_type" value="compress" id="compress" onchange="toggleInputs()" />
+                <label class="btn btn-outline-warning w-100" for="compress">Compress PDF/Img</label>
+            </div>
+
+            <div class="col-md-3 mb-2">
+                <input type="radio" class="btn-check" name="conversion_type" value="watermark" id="watermark" onchange="toggleInputs()" />
+                <label class="btn btn-outline-info w-100" for="watermark">Add Watermark</label>
+            </div>
+        </div>
+
+        <!-- Row 4 (New Feature: Fill PDF Form) -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-2">
+                <a href="/formfill" class="btn btn-outline-secondary w-100">📝 Fill PDF Form</a>
+            </div>
+        </div>
+
+        <!-- Extra Fields -->
+        <div class="mb-3" id="compressionField" style="display: none;">
+            <label class="form-label">Select Compression Level:</label>
+            <select class="form-select" name="compression_level">
+                <option value="high">Large Compression (Low Quality)</option>
+                <option value="medium">Medium Compression</option>
+                <option value="low">Less Compression (High Quality)</option>
+            </select>
+        </div>
+
         <div class="mb-3" id="passwordField" style="display: none;">
-            <label for="password" class="form-label">Set PDF Password:</label>
-            <input type="text" class="form-control" id="password" name="password" placeholder="Enter password">
+            <label class="form-label">Set PDF Password:</label>
+            <input type="text" class="form-control" name="password" placeholder="Enter password">
         </div>
 
         <div class="mb-3" id="pageRemoveField" style="display: none;">
-            <label for="remove_pages_input" class="form-label">Enter pages to remove (e.g., 1,3,5):</label>
-            <input type="text" class="form-control" id="remove_pages_input" name="remove_pages_input" placeholder="Page numbers to remove">
+            <label class="form-label">Enter pages to remove (e.g., 1,3,5):</label>
+            <input type="text" class="form-control" name="remove_pages_input">
         </div>
 
-
-        <!-- File Upload -->
-        <div class="mb-3">
-            <label for="formFiles" class="form-label">Upload Files:</label>
-            <input class="form-control" type="file" id="formFiles" name="file" multiple required>
+        <div class="mb-3" id="watermarkField" style="display: none;">
+            <label class="form-label">Enter Watermark Text:</label>
+            <input type="text" class="form-control" name="watermark_text_value">
         </div>
 
-        <button type="submit" class="btn btn-success w-100">Convert Now</button>
+        <!-- Drag & Drop Upload -->
+        <div class="drop-zone" id="dropZone">
+            <span>Drag & Drop files here or click to upload</span>
+            <input type="file" id="formFiles" name="file" multiple accept=".pdf,.docx,.jpg,.jpeg,.png" required>
+        </div>
+
+        <!-- File Preview -->
+        <div id="filePreview" class="mt-3"></div>
+
+        <button type="submit" class="btn btn-success w-100 mt-3">Convert Now</button>
     </form>
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- Password Toggle Script -->
 <script>
-function togglePasswordInput() {
-    const selectedType = document.querySelector('input[name="conversion_type"]:checked');
-    const passwordField = document.getElementById("passwordField");
-    const pageRemoveField = document.getElementById("pageRemoveField");
-
-    if (!selectedType) return;
-
-    passwordField.style.display = selectedType.value === "protect_pdf" ? "block" : "none";
-    pageRemoveField.style.display = selectedType.value === "remove_pages" ? "block" : "none";
+function toggleInputs() {
+    const selectedType = document.querySelector('input[name="conversion_type"]:checked')?.value;
+    document.getElementById("passwordField").style.display = selectedType === "protect_pdf" ? "block" : "none";
+    document.getElementById("pageRemoveField").style.display = selectedType === "remove_pages" ? "block" : "none";
+    document.getElementById("compressionField").style.display = selectedType === "compress" ? "block" : "none";
+    document.getElementById("watermarkField").style.display = selectedType === "watermark" ? "block" : "none";
 }
-</script>
 
+// Drag & Drop
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("formFiles");
+const preview = document.getElementById("filePreview");
+
+dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+});
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    fileInput.files = e.dataTransfer.files;
+    updatePreview(fileInput.files);
+});
+fileInput.addEventListener("change", () => updatePreview(fileInput.files));
+
+function updatePreview(files) {
+    preview.innerHTML = "";
+    Array.from(files).forEach(file => {
+        const item = document.createElement("div");
+        item.classList.add("file-item");
+        if (file.type.startsWith("image/")) {
+            const img = document.createElement("img");
+            img.src = URL.createObjectURL(file);
+            item.appendChild(img);
+        } else if (file.type === "application/pdf") {
+            item.innerHTML = "📄 " + file.name;
+        } else if (file.name.endsWith(".docx")) {
+            item.innerHTML = "📝 " + file.name;
+        } else {
+            item.innerHTML = "📁 " + file.name;
+        }
+        preview.appendChild(item);
+    });
+}
+
+// Dark Mode Toggle
+document.getElementById("themeToggle").addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+});
+</script>
 </body>
 </html>

@@ -109,3 +109,67 @@ input[type="text"]:focus {
         transform: translateY(0);
     }
 }
+
+.file-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f9f9f9;
+}
+.file-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+.file-item .pdf-icon {
+    font-size: 32px;
+    color: #e74c3c;
+}
+
+
+/* style.css */
+body.dark-mode {
+  background-color: #121212;
+  color: #e0e0e0;
+}
+
+body.dark-mode .navbar {
+  background-color: #1f1f1f !important;
+}
+
+body.dark-mode .drop-zone {
+  border-color: #bbb;
+  background: #1f1f1f;
+  color: #ddd;
+}
+
+body.dark-mode .btn-outline-primary,
+body.dark-mode .btn-outline-danger,
+body.dark-mode .btn-outline-success,
+body.dark-mode .btn-outline-warning,
+body.dark-mode .btn-outline-info {
+  color: #ddd;
+  border-color: #888;
+}
+
+body.dark-mode .btn-outline-primary:hover,
+body.dark-mode .btn-outline-danger:hover,
+body.dark-mode .btn-outline-success:hover,
+body.dark-mode .btn-outline-warning:hover,
+body.dark-mode .btn-outline-info:hover {
+  background-color: #333;
+  color: #fff;
+}
+
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode .form-control {
+  background-color: #222;
+  color: #eee;
+  border: 1px solid #444;
+}

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Form Editor</title>
+    <style>
+        body { font-family: sans-serif; }
+        #pdf-container { position: relative; }
+        canvas.pdf-page { border: 1px solid #aaa; margin-bottom: 10px; }
+        .field {
+            position: absolute;
+            border: 1px dashed #333;
+            background: rgba(255,255,200,0.7);
+        }
+        .field input {
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            width: 100%;
+        }
+        #save-btn { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>Fill PDF Form</h2>
+    <div id="pdf-container"></div>
+    <button id="save-btn">Save & Download</button>
+
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+
+    <script>
+        const pdfId = "{{ pdf_id }}";
+        const pdfInfo = {{ pdf_info|tojson }};
+        const container = document.getElementById("pdf-container");
+        const fields = [];
+
+        // Load and render PDF
+        const url = "/formfill/file/" + pdfId;  // we’ll add this route next
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.worker.min.js";
+
+        async function renderPDF() {
+            const pdf = await pdfjsLib.getDocument(url).promise;
+            for (let i = 0; i < pdf.numPages; i++) {
+                const page = await pdf.getPage(i+1);
+                const viewport = page.getViewport({ scale: 1.2 });
+
+                const canvas = document.createElement("canvas");
+                canvas.className = "pdf-page";
+                container.appendChild(canvas);
+
+                const ctx = canvas.getContext("2d");
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                // Overlay click handler
+                canvas.addEventListener("click", (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / canvas.width;
+                    const y = (e.clientY - rect.top) / canvas.height;
+
+                    addField(i, x, y, canvas);
+                });
+            }
+        }
+
+        function addField(page, nx, ny, canvas) {
+            const field = document.createElement("div");
+            field.className = "field";
+            field.style.left = (nx * canvas.width) + "px";
+            field.style.top = (ny * canvas.height) + "px";
+            field.style.width = "120px";
+            field.style.height = "25px";
+
+            const input = document.createElement("input");
+            input.type = "text";
+            field.appendChild(input);
+
+            container.appendChild(field);
+
+            fields.push({ page, nx, ny, input });
+        }
+
+        document.getElementById("save-btn").addEventListener("click", async () => {
+            const overlays = fields.map(f => ({
+                page: f.page,
+                x: f.nx,
+                y: f.ny,
+                text: f.input.value,
+                font_size: 14,
+                color: "#000000"
+            }));
+
+            const resp = await fetch(`/formfill/apply/${pdfId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ overlays })
+            });
+
+            const blob = await resp.blob();
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "filled_" + pdfId + ".pdf";
+            link.click();
+        });
+
+        renderPDF();
+    </script>
+</body>
+</html>
