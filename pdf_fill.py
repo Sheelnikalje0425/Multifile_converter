@@ -3,41 +3,83 @@ import os
 import io
 import uuid
 import json
+from datetime import datetime
 from typing import List, Dict, Any, Tuple
 import fitz  # PyMuPDF
 
-
-# Where to store temporary PDFs
-UPLOAD_DIR = os.path.join("instance", "formfill")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-
-def _new_id() -> str:
-    return uuid.uuid4().hex
-
-
-def _pdf_path(pdf_id: str) -> str:
-    # very basic guard
-    if not pdf_id or len(pdf_id) > 64 or not pdf_id.isalnum():
-        raise ValueError("Invalid pdf_id")
-    return os.path.join(UPLOAD_DIR, f"{pdf_id}.pdf")
+# =========================
+# TEMPORARY IN-MEMORY STORAGE
+# =========================
+pdf_storage = {}
+PDF_SESSION_TIMEOUT = 3600  # 1 hour
+MAX_MEMORY_MB = 500  # Maximum memory usage for PDF storage
+MAX_PDF_SIZE_MB = 50  # Maximum individual PDF size
 
 
 def save_pdf_temp(pdf_bytes: bytes) -> str:
-    """
-    Save bytes to a temp file and return a pdf_id.
-    """
-    pdf_id = _new_id()
-    path = _pdf_path(pdf_id)
-    with open(path, "wb") as f:
-        f.write(pdf_bytes)
+    """Save PDF to temporary memory with size limits"""
+    # Check individual PDF size
+    pdf_size_mb = len(pdf_bytes) / (1024 * 1024)
+    if pdf_size_mb > MAX_PDF_SIZE_MB:
+        raise ValueError(f"PDF too large: {pdf_size_mb:.1f}MB (max: {MAX_PDF_SIZE_MB}MB)")
+
+    # Check total memory usage
+    current_memory_mb = sum(len(data['data']) for data in pdf_storage.values()) / (1024 * 1024)
+    if current_memory_mb + pdf_size_mb > MAX_MEMORY_MB:
+        # Force cleanup before throwing error
+        cleanup_old_pdfs(force=True)
+        current_memory_mb = sum(len(data['data']) for data in pdf_storage.values()) / (1024 * 1024)
+        if current_memory_mb + pdf_size_mb > MAX_MEMORY_MB:
+            raise ValueError("Server memory limit reached for PDF storage")
+
+    pdf_id = str(uuid.uuid4().hex)
+    pdf_storage[pdf_id] = {
+        'data': pdf_bytes,
+        'timestamp': datetime.now(),
+        'size_mb': pdf_size_mb
+    }
+
+    cleanup_old_pdfs()
     return pdf_id
 
 
 def load_pdf_bytes(pdf_id: str) -> bytes:
-    path = _pdf_path(pdf_id)
-    with open(path, "rb") as f:
-        return f.read()
+    """Load PDF from temporary memory storage"""
+    if pdf_id in pdf_storage:
+        pdf_storage[pdf_id]['timestamp'] = datetime.now()
+        return pdf_storage[pdf_id]['data']
+    raise ValueError("PDF not found")
+
+
+def cleanup_old_pdfs(force=False):
+    """Cleanup old PDFs, or all if force=True"""
+    current_time = datetime.now()
+    pdfs_to_remove = []
+
+    for pdf_id, pdf_data in pdf_storage.items():
+        if force:
+            pdfs_to_remove.append(pdf_id)
+        else:
+            time_diff = current_time - pdf_data['timestamp']
+            if time_diff.total_seconds() > PDF_SESSION_TIMEOUT:
+                pdfs_to_remove.append(pdf_id)
+
+    for pdf_id in pdfs_to_remove:
+        del pdf_storage[pdf_id]
+
+    if pdfs_to_remove:
+        print(f"Cleaned up {len(pdfs_to_remove)} temporary PDFs")
+
+
+def get_storage_stats():
+    """Get storage statistics"""
+    total_size = sum(len(data['data']) for data in pdf_storage.values())
+    total_count = len(pdf_storage)
+    return {
+        'total_pdfs': total_count,
+        'total_size_mb': total_size / (1024 * 1024),
+        'max_size_mb': MAX_MEMORY_MB
+    }
 
 
 def get_pdf_page_info(pdf_id: str) -> Dict[str, Any]:
@@ -53,8 +95,8 @@ def get_pdf_page_info(pdf_id: str) -> Dict[str, Any]:
     }
     Units are PDF points.
     """
-    path = _pdf_path(pdf_id)
-    doc = fitz.open(path)
+    pdf_bytes = load_pdf_bytes(pdf_id)
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     pages = []
     for i, page in enumerate(doc):
         rect = page.rect  # fitz.Rect
@@ -85,12 +127,12 @@ def _parse_hex_color(hex_str: str) -> Tuple[float, float, float]:
 
 
 def apply_text_overlays(
-    pdf_id: str,
-    overlays: List[Dict[str, Any]],
-    default_font: str = "helv",   # built-in Helvetica
-    default_size: float = 12.0,
-    default_color: str = "#000000",
-    write_debug_json: bool = False
+        pdf_id: str,
+        overlays: List[Dict[str, Any]],
+        default_font: str = "helv",  # built-in Helvetica
+        default_size: float = 12.0,
+        default_color: str = "#000000",
+        write_debug_json: bool = False
 ) -> bytes:
     """
     Apply text overlays and return the new PDF bytes.
@@ -109,75 +151,92 @@ def apply_text_overlays(
     ]
 
     Notes:
-    - Coordinates are **normalized** so UI can work at any zoom.
-    - We align by computing text length for center/right.
+    - Coordinates are normalized (0-1) from top-left of page
+    - PDF coordinate system: (0,0) is bottom-left, so we flip Y coordinate
     """
-    path = _pdf_path(pdf_id)
-    doc = fitz.open(path)
+    pdf_bytes = load_pdf_bytes(pdf_id)
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
     if write_debug_json:
         # optional: save last overlays to a sidecar file for debugging
-        with open(os.path.join(UPLOAD_DIR, f"{pdf_id}.overlays.json"), "w", encoding="utf-8") as f:
+        debug_dir = os.path.join("instance", "debug")
+        os.makedirs(debug_dir, exist_ok=True)
+        with open(os.path.join(debug_dir, f"{pdf_id}.overlays.json"), "w", encoding="utf-8") as f:
             json.dump(overlays, f, ensure_ascii=False, indent=2)
 
     for item in overlays:
         try:
             page_index = int(item.get("page", 0))
-            page = doc[page_index]
+            if page_index < 0 or page_index >= len(doc):
+                continue  # Skip invalid page indices
 
+            page = doc[page_index]
             rect = page.rect
             page_w, page_h = float(rect.width), float(rect.height)
 
-            # normalized coords -> absolute points
+            # Normalized coordinates (0-1 from top-left) to absolute points
             nx = float(item.get("x", 0))
             ny = float(item.get("y", 0))
+
+            # Convert to PDF coordinates (0,0 is bottom-left)
             x = max(0.0, min(1.0, nx)) * page_w
-            y = max(0.0, min(1.0, ny)) * page_h
+            y = page_h - (max(0.0, min(1.0, ny)) * page_h)  # Flip Y coordinate
 
             text = str(item.get("text", ""))
-            if not text:
+            if not text.strip():
                 continue
 
             font_size = float(item.get("font_size", default_size))
             color = _parse_hex_color(item.get("color", default_color))
             align = (item.get("align") or "left").lower()
 
-            # Text measurement for alignment
+            # Calculate text width for alignment
             try:
-                text_len = page.get_text_length(text, fontname=default_font, fontsize=font_size)
-            except Exception:
-                # older/newer API fallback
+                # Try the modern API first
+                text_width = page.get_text_length(text, fontname=default_font, fontsize=font_size)
+            except AttributeError:
                 try:
-                    text_len = fitz.get_text_length(text, fontname=default_font, fontsize=font_size)
-                except Exception:
-                    text_len = len(text) * (font_size * 0.5)  # rough fallback
+                    # Fallback to older API
+                    text_width = fitz.get_text_length(text, fontname=default_font, fontsize=font_size)
+                except:
+                    # Rough estimation as last resort
+                    text_width = len(text) * (font_size * 0.5)
 
+            # Adjust x position based on alignment
             if align == "center":
-                draw_x = x - (text_len / 2.0)
+                x = x - (text_width / 2)
             elif align == "right":
-                draw_x = x - text_len
-            else:
-                draw_x = x
+                x = x - text_width
 
-            # Draw text (top-left baseline correction: PyMuPDF draws from baseline;
-            # we nudge down a bit, so it looks like top-left anchor)
-            baseline_adjust = font_size * 0.75
-            draw_y = y + baseline_adjust
+            # Ensure coordinates are within page bounds
+            x = max(0, min(x, page_w - text_width))
+            y = max(font_size, min(y, page_h))  # Keep text visible
 
+            # Insert text with proper rendering
             page.insert_text(
-                (draw_x, draw_y),
-                text,
+                point=(x, y),
+                text=text,
                 fontsize=font_size,
                 fontname=default_font,
-                fill=color,
-                render_mode=0  # fill text
+                color=color,
+                render_mode=0,  # Fill text (not outline)
+                overlay=True  # Ensure text is visible
             )
-        except Exception as e:
-            # Continue with others even if one fails
-            print("Overlay error:", e)
 
+            print(f"Added text: '{text}' at ({x:.1f}, {y:.1f}) on page {page_index}")
+
+        except Exception as e:
+            print(f"Overlay error on page {item.get('page', 0)}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # Save the modified PDF
     out = io.BytesIO()
-    doc.save(out)
+    doc.save(out, garbage=4, deflate=True, clean=True)
     doc.close()
+
     out.seek(0)
-    return out.read()
+    result_bytes = out.read()
+    print(f"PDF saved successfully, size: {len(result_bytes)} bytes")
+
+    return result_bytes

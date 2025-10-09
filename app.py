@@ -2,8 +2,12 @@ import os
 import io
 import zipfile
 import fitz  # PyMuPDF
+import uuid
+import tempfile
+import shutil
+from datetime import datetime, timedelta
 
-from pdf_fill import save_pdf_temp, load_pdf_bytes, get_pdf_page_info, apply_text_overlays
+from pdf_fill import save_pdf_temp, load_pdf_bytes, get_pdf_page_info, apply_text_overlays, pdf_storage
 
 from flask import Flask, render_template, request, send_file, redirect, jsonify
 from PIL import Image, ImageDraw, ImageFont
@@ -17,6 +21,7 @@ from pdf2image import convert_from_bytes
 # App & Config
 # =========================
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key-here'
 
 # Tesseract path: prefer ENV, fallback to your Windows path
 TESS_PATH = os.getenv("TESSERACT_PATH", r"C:\Program Files\Tesseract-OCR\tesseract.exe")
@@ -27,25 +32,33 @@ except Exception:
 
 # Optional upload size limit (50 MB)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB
-
-
 # =========================
 # Helpers: Conversions
 # =========================
 def word_to_pdf_stream(docx_stream) -> io.BytesIO:
-    """Very basic DOCX -> PDF (text only) using python-docx + FPDF."""
+    """DOCX -> PDF with Unicode support using fpdf2"""
     doc = Document(docx_stream)
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+
+    # Configure for Unicode support
+    pdf.set_font("Helvetica", size=12)
 
     for para in doc.paragraphs:
         text = para.text or ""
         if not text.strip():
             pdf.ln(6)
         else:
-            pdf.multi_cell(0, 8, text)
+            # Handle Unicode characters - fpdf2 should handle this better
+            try:
+                # Encode to Latin-1 with replacement for unsupported chars
+                safe_text = text.encode('latin-1', 'replace').decode('latin-1')
+                pdf.multi_cell(0, 8, safe_text)
+            except Exception as e:
+                # Fallback: replace problematic characters
+                safe_text = text.encode('utf-8', errors='replace').decode('utf-8')
+                pdf.multi_cell(0, 8, safe_text)
 
     out = io.BytesIO()
     pdf.output(out)
@@ -188,6 +201,44 @@ def remove_pdf_pages_stream(pdf_bytes: bytes, remove_pages_input: str) -> io.Byt
     writer.write(out)
     out.seek(0)
     return out
+
+
+# =========================
+# Helpers: PDF Password Removal
+# =========================
+def remove_pdf_password_stream(pdf_bytes: bytes, password: str) -> io.BytesIO:
+    """
+    Remove password protection from a PDF.
+    """
+    try:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+
+        # Check if PDF is encrypted
+        if not reader.is_encrypted:
+            raise ValueError("PDF is not password protected")
+
+        # Try to decrypt with provided password
+        if not reader.decrypt(password):
+            raise ValueError("Incorrect password")
+
+        # Create a new PDF without encryption
+        writer = PdfWriter()
+
+        # Copy all pages to the new writer
+        for page in reader.pages:
+            writer.add_page(page)
+
+        # Copy metadata if available
+        if reader.metadata:
+            writer.add_metadata(reader.metadata)
+
+        out = io.BytesIO()
+        writer.write(out)
+        out.seek(0)
+        return out
+
+    except Exception as e:
+        raise ValueError(f"Failed to remove password: {str(e)}")
 
 
 # =========================
@@ -405,6 +456,19 @@ def convert():
         # =======================
         # Single-file operations
         # =======================
+        # ---- Remove PDF Password ----
+        if conversion_type == "remove_pdf_password":
+            if not fname.endswith(".pdf"):
+                return "Please upload a PDF file.", 400
+
+            if not password:
+                return "Please provide the current PDF password.", 400
+
+            pdf_bytes = first_file.read()
+            first_file.seek(0)
+            out = remove_pdf_password_stream(pdf_bytes, password=password)
+            return send_file(out, as_attachment=True, download_name="unprotected.pdf")
+
         # ---- OCR ----
         if conversion_type == "ocr":
             if fname.endswith((".png", ".jpg", ".jpeg")):
@@ -534,25 +598,32 @@ def formfill_upload():
     file = request.files.get("pdf")
     if not file or not (file.filename or "").lower().endswith(".pdf"):
         return "No PDF uploaded", 400
-    pdf_id = save_pdf_temp(file.read())
+    pdf_bytes = file.read()
+    pdf_id = save_pdf_temp(pdf_bytes)
     return redirect(f"/formfill/editor/{pdf_id}")
 
 
 @app.route("/formfill/editor/<pdf_id>")
 def formfill_editor(pdf_id):
     # Provide page sizes for UI (PDF.js will render visually)
-    info = get_pdf_page_info(pdf_id)
-    return render_template("formfill_editor.html", pdf_id=pdf_id, pdf_info=info)
+    try:
+        info = get_pdf_page_info(pdf_id)
+        return render_template("formfill_editor.html", pdf_id=pdf_id, pdf_info=info)
+    except ValueError:
+        return "PDF not found or session expired", 404
 
 
 @app.route("/formfill/file/<pdf_id>")
 def formfill_file(pdf_id):
-    pdf_bytes = load_pdf_bytes(pdf_id)
-    return send_file(
-        io.BytesIO(pdf_bytes),
-        download_name=f"{pdf_id}.pdf",
-        mimetype="application/pdf"
-    )
+    try:
+        pdf_bytes = load_pdf_bytes(pdf_id)
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            download_name=f"{pdf_id}.pdf",
+            mimetype="application/pdf"
+        )
+    except ValueError:
+        return "PDF not found or session expired", 404
 
 
 @app.route("/formfill/apply/<pdf_id>", methods=["POST"])
@@ -563,17 +634,32 @@ def formfill_apply(pdf_id):
     except Exception:
         return jsonify({"error": "Invalid JSON"}), 400
 
-    filled_pdf = apply_text_overlays(pdf_id, overlays)
-    return send_file(
-        io.BytesIO(filled_pdf),
-        as_attachment=True,
-        download_name=f"filled_{pdf_id}.pdf",
-        mimetype="application/pdf"
-    )
+    try:
+        filled_pdf = apply_text_overlays(pdf_id, overlays)
+
+        # Remove the PDF from temporary storage after processing
+        if pdf_id in pdf_storage:
+            del pdf_storage[pdf_id]
+
+        return send_file(
+            io.BytesIO(filled_pdf),
+            as_attachment=True,
+            download_name=f"filled_{pdf_id}.pdf",
+            mimetype="application/pdf"
+        )
+    except ValueError:
+        return jsonify({"error": "PDF not found or session expired"}), 404
 
 
 # =========================
 # Run
 # =========================
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Development
+    app.run(debug=True, host='0.0.0.0', port=5000)
+else:
+    # Production
+    # Ensure necessary directories exist
+    import os
+    os.makedirs('uploads', exist_ok=True)
+    os.makedirs('converted', exist_ok=True)

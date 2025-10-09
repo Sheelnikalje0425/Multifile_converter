@@ -6,74 +6,128 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        /* === Basic Styling === */
         body {
+            background: linear-gradient(135deg, #e0f7fa, #e1bee7);
             font-family: 'Poppins', sans-serif;
-            transition: background 0.3s, color 0.3s;
+            padding-top: 50px;
+            min-height: 100vh;
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
-        /* Light Mode Defaults */
-        body {
-            background: #f8f9fa;
-            color: #212529;
+        .container {
+            max-width: 900px;
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.05);
+            animation: fadeInUp 0.8s ease;
+            transition: all 0.3s ease;
         }
 
-        /* Dark Mode */
-        body.dark-mode {
-            background: #121212;
-            color: #e0e0e0;
+        h2 {
+            margin-bottom: 30px;
+            font-weight: 600;
+            animation: fadeInDown 0.8s ease;
         }
 
-        body.dark-mode .navbar {
-            background-color: #1f1f1f !important;
-        }
-
-        body.dark-mode .navbar .navbar-brand {
-            color: #e0e0e0 !important;
-        }
-
-        body.dark-mode .btn-outline-primary,
-        body.dark-mode .btn-outline-danger,
-        body.dark-mode .btn-outline-success,
-        body.dark-mode .btn-outline-warning,
-        body.dark-mode .btn-outline-info,
-        body.dark-mode .btn-outline-secondary {
-            color: #e0e0e0;
-            border-color: #bbb;
-        }
-
-        body.dark-mode .btn-outline-primary:hover,
-        body.dark-mode .btn-outline-danger:hover,
-        body.dark-mode .btn-outline-success:hover,
-        body.dark-mode .btn-outline-warning:hover,
-        body.dark-mode .btn-outline-info:hover,
-        body.dark-mode .btn-outline-secondary:hover {
-            background: #333;
+        /* === Form and Button Styling === */
+        .btn-check:checked + .btn {
+            background-color: #673ab7;
             color: #fff;
-            border-color: #999;
+            border-color: #5e35b1;
+            transform: scale(1.05);
+            box-shadow: 0 0 12px rgba(103, 58, 183, 0.4);
         }
 
-        body.dark-mode .form-control,
-        body.dark-mode .form-select {
-            background-color: #1f1f1f;
-            color: #e0e0e0;
-            border: 1px solid #444;
+        .btn {
+            transition: all 0.3s ease-in-out;
+            font-weight: 500;
+            border-radius: 10px;
         }
 
-        body.dark-mode .drop-zone {
-            border-color: #888;
-            background: #1f1f1f;
-            color: #bbb;
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
         }
 
+        /* === Button Colors === */
+        .btn-outline-danger:hover {
+            background-color: #d32f2f;
+            border-color: #c62828;
+            color: white;
+        }
+
+        .btn-outline-warning:hover {
+            background-color: #f57c00;
+            border-color: #ef6c00;
+            color: #fff;
+        }
+
+        .btn-outline-success:hover {
+            background-color: #388e3c;
+            border-color: #2e7d32;
+            color: #fff;
+        }
+
+        .btn-outline-info:hover {
+            background-color: #0288d1;
+            border-color: #0277bd;
+            color: #fff;
+        }
+
+        /* === Form Elements === */
+        .form-control, .form-select {
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #ced4da;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #673ab7;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(103, 58, 183, 0.1);
+        }
+
+        /* === Password & Form Fields === */
+        .password-field,
+        #pageRemoveField,
+        #compressionField,
+        #watermarkField {
+            transition: all 0.5s ease-in-out;
+            animation: fadeInUp 0.4s ease;
+        }
+
+        .password-field {
+            margin: 10px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #007bff;
+        }
+
+        /* === Form Text Styling === */
+        .form-text {
+            display: block;
+            margin-top: 8px;
+            color: #6c757d;
+            font-size: 0.875em;
+            line-height: 1.4;
+        }
+
+        /* === Drop Zone Styling === */
         .drop-zone {
             max-width: 100%;
-            padding: 30px;
+            padding: 40px;
             border: 2px dashed #007bff;
             border-radius: 10px;
             text-align: center;
             color: #777;
             cursor: pointer;
-            transition: 0.3s;
+            transition: all 0.3s ease;
+            background: white;
+            font-size: 1.1em;
         }
 
         .drop-zone.dragover {
@@ -86,17 +140,185 @@
             display: none;
         }
 
+        /* === File Preview === */
         .file-item {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin: 5px 0;
+            margin-bottom: 8px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+            color: #212529;
+            font-weight: 500;
         }
 
         .file-item img {
             width: 40px;
-            height: auto;
+            height: 40px;
+            object-fit: cover;
             border-radius: 4px;
+        }
+
+        /* === Animations === */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ========================= */
+        /* DARK MODE STYLES */
+        /* ========================= */
+        body.dark-mode {
+            background: #121212 !important;
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .container {
+            background: #1e1e1e !important;
+            color: #e0e0e0 !important;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        body.dark-mode .navbar {
+            background-color: #1a1a1a !important;
+            border-bottom: 1px solid #333;
+        }
+
+        body.dark-mode .navbar-brand {
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .navbar .btn-outline-dark {
+            color: #e0e0e0;
+            border-color: #666;
+        }
+
+        body.dark-mode .navbar .btn-outline-dark:hover {
+            background-color: #333;
+            color: #fff;
+            border-color: #888;
+        }
+
+        body.dark-mode .navbar .btn-outline-light {
+            color: #e0e0e0;
+            border-color: #666;
+        }
+
+        body.dark-mode .navbar .btn-outline-light:hover {
+            background-color: #333;
+            color: #fff;
+            border-color: #888;
+        }
+
+        body.dark-mode .btn-outline-primary,
+        body.dark-mode .btn-outline-danger,
+        body.dark-mode .btn-outline-success,
+        body.dark-mode .btn-outline-warning,
+        body.dark-mode .btn-outline-info,
+        body.dark-mode .btn-outline-secondary {
+            color: #e0e0e0 !important;
+            border-color: #666 !important;
+            background: transparent !important;
+        }
+
+        body.dark-mode .btn-outline-primary:hover,
+        body.dark-mode .btn-outline-danger:hover,
+        body.dark-mode .btn-outline-success:hover,
+        body.dark-mode .btn-outline-warning:hover,
+        body.dark-mode .btn-outline-info:hover,
+        body.dark-mode .btn-outline-secondary:hover {
+            background: #333 !important;
+            color: #fff !important;
+            border-color: #888 !important;
+        }
+
+        body.dark-mode .btn-check:checked + .btn {
+            background-color: #7e57c2 !important;
+            color: #fff !important;
+            border-color: #673ab7 !important;
+        }
+
+        body.dark-mode .form-control,
+        body.dark-mode .form-select {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+            border: 1px solid #444 !important;
+        }
+
+        body.dark-mode .form-control:focus,
+        body.dark-mode .form-select:focus {
+            border-color: #7e57c2 !important;
+            box-shadow: 0 0 0 0.2rem rgba(126, 87, 194, 0.25) !important;
+        }
+
+        body.dark-mode .form-label {
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .password-field {
+            background: #2d2d2d !important;
+            border-left-color: #0d6efd !important;
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .drop-zone {
+            background: #2d2d2d !important;
+            border-color: #666 !important;
+            color: #bbb !important;
+        }
+
+        body.dark-mode .drop-zone.dragover {
+            background-color: #3a3a3a !important;
+            border-color: #888 !important;
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .file-item {
+            background: #2d2d2d !important;
+            border-color: #444 !important;
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .form-text {
+            color: #aaa !important;
+        }
+
+        body.dark-mode .btn-success {
+            background-color: #198754 !important;
+            border-color: #198754 !important;
+        }
+
+        body.dark-mode .btn-success:hover {
+            background-color: #157347 !important;
+            border-color: #146c43 !important;
+        }
+
+        body.dark-mode .text-muted {
+            color: #aaa !important;
+        }
+
+        /* Ensure all text in dark mode is visible */
+        body.dark-mode * {
+            color: inherit;
         }
     </style>
 </head>
@@ -106,11 +328,6 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
         <a class="navbar-brand fw-bold" href="/">Multi File Converter</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
-        <!-- Dark Mode Toggle Button -->
         <button id="themeToggle" class="btn btn-outline-dark ms-auto">
             🌙 Dark Mode
         </button>
@@ -118,86 +335,109 @@
 </nav>
 
 <!-- Main Content -->
-<div class="container mt-4 text-center">
-    <h2 class="mb-4 fw-semibold">Multi File Converter 🔄</h2>
+<div class="container mt-5 text-center">
+    <h2 class="fw-semibold mb-4">Multi File Converter 🔄</h2>
+    <p class="text-muted mb-4">Select conversion type and upload your files to get started.</p>
 
     <form method="POST" action="/convert" enctype="multipart/form-data">
 
         <!-- Conversion Options -->
-        <label class="form-label fw-bold">Select Conversion Type:</label>
-
-        <div class="row mb-3">
-            <div class="col-md-3">
+        <div class="row mb-4">
+            <!-- Row 1 -->
+            <div class="col-md-3 mb-3">
                 <input type="radio" class="btn-check" name="conversion_type" value="word_to_pdf" id="word_to_pdf" required onchange="toggleInputs()">
-                <label class="btn btn-outline-primary w-100" for="word_to_pdf">Word ➔ PDF</label>
+                <label class="btn btn-outline-primary w-100 py-3" for="word_to_pdf">
+                    <strong>Word ➔ PDF</strong>
+                </label>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-3 mb-3">
                 <input type="radio" class="btn-check" name="conversion_type" value="pdf_to_word" id="pdf_to_word" onchange="toggleInputs()">
-                <label class="btn btn-outline-primary w-100" for="pdf_to_word">PDF ➔ Word</label>
+                <label class="btn btn-outline-primary w-100 py-3" for="pdf_to_word">
+                    <strong>PDF ➔ Word</strong>
+                </label>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-3 mb-3">
                 <input type="radio" class="btn-check" name="conversion_type" value="jpg_to_pdf" id="jpg_to_pdf" onchange="toggleInputs()">
-                <label class="btn btn-outline-primary w-100" for="jpg_to_pdf">JPG ➔ PDF</label>
+                <label class="btn btn-outline-primary w-100 py-3" for="jpg_to_pdf">
+                    <strong>JPG ➔ PDF</strong>
+                </label>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-3 mb-3">
                 <input type="radio" class="btn-check" name="conversion_type" value="pdf_to_jpg" id="pdf_to_jpg" onchange="toggleInputs()">
-                <label class="btn btn-outline-primary w-100" for="pdf_to_jpg">PDF ➔ JPG</label>
+                <label class="btn btn-outline-primary w-100 py-3" for="pdf_to_jpg">
+                    <strong>PDF ➔ JPG</strong>
+                </label>
             </div>
-        </div>
 
-        <!-- Row 2 -->
-        <div class="row mb-3">
-            <div class="col-md-3">
+            <!-- Row 2 -->
+            <div class="col-md-3 mb-3">
                 <input type="radio" class="btn-check" name="conversion_type" value="jpg_to_png" id="jpg_to_png" onchange="toggleInputs()">
-                <label class="btn btn-outline-primary w-100" for="jpg_to_png">JPG ➔ PNG</label>
+                <label class="btn btn-outline-primary w-100 py-3" for="jpg_to_png">
+                    <strong>JPG ➔ PNG</strong>
+                </label>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-3 mb-3">
                 <input type="radio" class="btn-check" name="conversion_type" value="png_to_jpg" id="png_to_jpg" onchange="toggleInputs()">
-                <label class="btn btn-outline-primary w-100" for="png_to_jpg">PNG ➔ JPG</label>
+                <label class="btn btn-outline-primary w-100 py-3" for="png_to_jpg">
+                    <strong>PNG ➔ JPG</strong>
+                </label>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-3 mb-3">
                 <input type="radio" class="btn-check" name="conversion_type" value="merge_pdfs" id="merge_pdfs" onchange="toggleInputs()">
-                <label class="btn btn-outline-primary w-100" for="merge_pdfs">Merge PDFs</label>
+                <label class="btn btn-outline-primary w-100 py-3" for="merge_pdfs">
+                    <strong>Merge PDFs</strong>
+                </label>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-3 mb-3">
                 <input type="radio" class="btn-check" name="conversion_type" value="protect_pdf" id="protect_pdf" onchange="toggleInputs()">
-                <label class="btn btn-outline-danger w-100" for="protect_pdf">Protect PDF</label>
-            </div>
-        </div>
-
-        <!-- Row 3 -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-2">
-                <input type="radio" class="btn-check" name="conversion_type" value="remove_pages" id="remove_pages" onchange="toggleInputs()" />
-                <label class="btn btn-outline-primary w-100" for="remove_pages">Remove PDF Pages</label>
+                <label class="btn btn-outline-danger w-100 py-3" for="protect_pdf">
+                    <strong>Protect PDF</strong>
+                </label>
             </div>
 
-            <div class="col-md-3 mb-2">
-                <input type="radio" class="btn-check" name="conversion_type" value="ocr" id="ocr" onchange="toggleInputs()" />
-                <label class="btn btn-outline-success w-100" for="ocr">Image/PDF ➔ Text</label>
+            <!-- Row 3 -->
+            <div class="col-md-3 mb-3">
+                <input type="radio" class="btn-check" name="conversion_type" value="remove_pages" id="remove_pages" onchange="toggleInputs()">
+                <label class="btn btn-outline-primary w-100 py-3" for="remove_pages">
+                    <strong>Remove PDF Pages</strong>
+                </label>
+            </div>
+            <div class="col-md-3 mb-3">
+                <input type="radio" class="btn-check" name="conversion_type" value="ocr" id="ocr" onchange="toggleInputs()">
+                <label class="btn btn-outline-success w-100 py-3" for="ocr">
+                    <strong>Image/PDF ➔ Text</strong>
+                </label>
+            </div>
+            <div class="col-md-3 mb-3">
+                <input type="radio" class="btn-check" name="conversion_type" value="compress" id="compress" onchange="toggleInputs()">
+                <label class="btn btn-outline-warning w-100 py-3" for="compress">
+                    <strong>Compress PDF/Img</strong>
+                </label>
+            </div>
+            <div class="col-md-3 mb-3">
+                <input type="radio" class="btn-check" name="conversion_type" value="watermark" id="watermark" onchange="toggleInputs()">
+                <label class="btn btn-outline-info w-100 py-3" for="watermark">
+                    <strong>Add Watermark</strong>
+                </label>
             </div>
 
-            <div class="col-md-3 mb-2">
-                <input type="radio" class="btn-check" name="conversion_type" value="compress" id="compress" onchange="toggleInputs()" />
-                <label class="btn btn-outline-warning w-100" for="compress">Compress PDF/Img</label>
+            <!-- Row 4 -->
+            <div class="col-md-3 mb-3">
+                <input type="radio" class="btn-check" name="conversion_type" value="remove_pdf_password" id="remove_pdf_password" onchange="toggleInputs()">
+                <label class="btn btn-outline-danger w-100 py-3" for="remove_pdf_password">
+                    <strong>Remove PDF Password</strong>
+                </label>
             </div>
-
-            <div class="col-md-3 mb-2">
-                <input type="radio" class="btn-check" name="conversion_type" value="watermark" id="watermark" onchange="toggleInputs()" />
-                <label class="btn btn-outline-info w-100" for="watermark">Add Watermark</label>
-            </div>
-        </div>
-
-        <!-- Row 4 (New Feature: Fill PDF Form) -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-2">
-                <a href="/formfill" class="btn btn-outline-secondary w-100">📝 Fill PDF Form</a>
+            <div class="col-md-3 mb-3">
+                <a href="/formfill" class="btn btn-outline-secondary w-100 py-3">
+                    <strong>📝 Fill PDF Form</strong>
+                </a>
             </div>
         </div>
 
         <!-- Extra Fields -->
-        <div class="mb-3" id="compressionField" style="display: none;">
-            <label class="form-label">Select Compression Level:</label>
+        <div class="mb-4" id="compressionField" style="display: none;">
+            <label class="form-label fw-bold">Select Compression Level:</label>
             <select class="form-select" name="compression_level">
                 <option value="high">Large Compression (Low Quality)</option>
                 <option value="medium">Medium Compression</option>
@@ -205,31 +445,35 @@
             </select>
         </div>
 
-        <div class="mb-3" id="passwordField" style="display: none;">
-            <label class="form-label">Set PDF Password:</label>
-            <input type="text" class="form-control" name="password" placeholder="Enter password">
+        <div class="mb-4 password-field" id="passwordField" style="display: none;">
+            <label class="form-label fw-bold">PDF Password:</label>
+            <input type="password" class="form-control" name="password" placeholder="Enter password">
+            <small class="form-text">
+                For "Remove PDF Password": Enter the current password to remove protection<br>
+                For "Protect PDF": Enter the new password to encrypt the PDF
+            </small>
         </div>
 
-        <div class="mb-3" id="pageRemoveField" style="display: none;">
-            <label class="form-label">Enter pages to remove (e.g., 1,3,5):</label>
-            <input type="text" class="form-control" name="remove_pages_input">
+        <div class="mb-4" id="pageRemoveField" style="display: none;">
+            <label class="form-label fw-bold">Enter pages to remove (e.g., 1,3,5):</label>
+            <input type="text" class="form-control" name="remove_pages_input" placeholder="Example: 1,3,5-7">
         </div>
 
-        <div class="mb-3" id="watermarkField" style="display: none;">
-            <label class="form-label">Enter Watermark Text:</label>
-            <input type="text" class="form-control" name="watermark_text_value">
+        <div class="mb-4" id="watermarkField" style="display: none;">
+            <label class="form-label fw-bold">Enter Watermark Text:</label>
+            <input type="text" class="form-control" name="watermark_text_value" placeholder="Enter watermark text">
         </div>
 
         <!-- Drag & Drop Upload -->
-        <div class="drop-zone" id="dropZone">
+        <div class="drop-zone mb-4" id="dropZone">
             <span>Drag & Drop files here or click to upload</span>
             <input type="file" id="formFiles" name="file" multiple accept=".pdf,.docx,.jpg,.jpeg,.png" required>
         </div>
 
         <!-- File Preview -->
-        <div id="filePreview" class="mt-3"></div>
+        <div id="filePreview" class="mb-4"></div>
 
-        <button type="submit" class="btn btn-success w-100 mt-3">Convert Now</button>
+        <button type="submit" class="btn btn-success w-100 py-3 fw-bold fs-5">Convert Now</button>
     </form>
 </div>
 
@@ -237,7 +481,10 @@
 <script>
 function toggleInputs() {
     const selectedType = document.querySelector('input[name="conversion_type"]:checked')?.value;
-    document.getElementById("passwordField").style.display = selectedType === "protect_pdf" ? "block" : "none";
+
+    // Show/hide fields based on selected conversion type
+    document.getElementById("passwordField").style.display =
+        (selectedType === "protect_pdf" || selectedType === "remove_pdf_password") ? "block" : "none";
     document.getElementById("pageRemoveField").style.display = selectedType === "remove_pages" ? "block" : "none";
     document.getElementById("compressionField").style.display = selectedType === "compress" ? "block" : "none";
     document.getElementById("watermarkField").style.display = selectedType === "watermark" ? "block" : "none";
@@ -285,6 +532,33 @@ function updatePreview(files) {
 // Dark Mode Toggle
 document.getElementById("themeToggle").addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
+    const themeToggle = document.getElementById("themeToggle");
+
+    if (document.body.classList.contains("dark-mode")) {
+        themeToggle.textContent = "☀️ Light Mode";
+        themeToggle.classList.remove("btn-outline-dark");
+        themeToggle.classList.add("btn-outline-light");
+    } else {
+        themeToggle.textContent = "🌙 Dark Mode";
+        themeToggle.classList.remove("btn-outline-light");
+        themeToggle.classList.add("btn-outline-dark");
+    }
+
+    // Save preference to localStorage
+    localStorage.setItem('darkMode', document.body.classList.contains("dark-mode"));
+});
+
+// Initialize dark mode state on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if dark mode was previously set
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+        const themeToggle = document.getElementById("themeToggle");
+        themeToggle.textContent = "☀️ Light Mode";
+        themeToggle.classList.remove("btn-outline-dark");
+        themeToggle.classList.add("btn-outline-light");
+    }
 });
 </script>
 </body>

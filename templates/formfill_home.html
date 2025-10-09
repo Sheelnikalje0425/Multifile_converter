@@ -8,25 +8,22 @@
     <style>
         body {
             font-family: 'Poppins', sans-serif;
-            background: #f8f9fa;
-            color: #212529;
-            transition: background 0.3s, color 0.3s;
+            background: linear-gradient(135deg, #e0f7fa, #e1bee7);
+            padding-top: 50px;
+            min-height: 100vh;
+            transition: background 0.3s ease, color 0.3s ease;
         }
-        body.dark-mode {
-            background: #121212;
-            color: #e0e0e0;
+
+        .container {
+            max-width: 900px;
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.05);
+            animation: fadeInUp 0.8s ease;
+            transition: all 0.3s ease;
         }
-        body.dark-mode .navbar {
-            background-color: #1f1f1f !important;
-        }
-        body.dark-mode .navbar .navbar-brand {
-            color: #e0e0e0 !important;
-        }
-        body.dark-mode .drop-zone {
-            border-color: #888;
-            background: #1f1f1f;
-            color: #bbb;
-        }
+
         .drop-zone {
             max-width: 100%;
             padding: 30px;
@@ -35,19 +32,112 @@
             text-align: center;
             color: #777;
             cursor: pointer;
-            transition: 0.3s;
+            transition: all 0.3s ease;
+            background: white;
         }
+
         .drop-zone.dragover {
             background-color: #e9f5ff;
             border-color: #0056b3;
             color: #000;
         }
+
         .drop-zone input {
             display: none;
         }
+
         .file-item {
             margin-top: 10px;
             font-weight: 500;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background: #121212 !important;
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .container {
+            background: #1e1e1e !important;
+            color: #e0e0e0 !important;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        body.dark-mode .navbar {
+            background-color: #1a1a1a !important;
+            border-bottom: 1px solid #333;
+        }
+
+        body.dark-mode .navbar-brand {
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .navbar .btn-outline-dark {
+            color: #e0e0e0;
+            border-color: #666;
+        }
+
+        body.dark-mode .navbar .btn-outline-dark:hover {
+            background-color: #333;
+            color: #fff;
+            border-color: #888;
+        }
+
+        body.dark-mode .navbar .btn-outline-light {
+            color: #e0e0e0;
+            border-color: #666;
+        }
+
+        body.dark-mode .navbar .btn-outline-light:hover {
+            background-color: #333;
+            color: #fff;
+            border-color: #888;
+        }
+
+        body.dark-mode .drop-zone {
+            background: #2d2d2d !important;
+            border-color: #666 !important;
+            color: #bbb !important;
+        }
+
+        body.dark-mode .drop-zone.dragover {
+            background-color: #3a3a3a !important;
+            border-color: #888 !important;
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .file-item {
+            background: #2d2d2d !important;
+            color: #e0e0e0 !important;
+        }
+
+        body.dark-mode .text-muted {
+            color: #aaa !important;
+        }
+
+        body.dark-mode .btn-success {
+            background-color: #198754 !important;
+            border-color: #198754 !important;
+        }
+
+        body.dark-mode .btn-success:hover {
+            background-color: #157347 !important;
+            border-color: #146c43 !important;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
@@ -69,15 +159,14 @@
     <p class="text-muted">Upload your PDF and start editing it in the editor.</p>
 
     <form method="POST" action="/formfill/upload" enctype="multipart/form-data">
-    <div class="drop-zone mb-3" id="dropZone">
-        <span>Drag & Drop PDF here or click to upload</span>
-        <input type="file" id="pdfFile" name="pdf" accept=".pdf" required>
-    </div>
-    <div id="filePreview"></div>
+        <div class="drop-zone mb-3" id="dropZone">
+            <span>Drag & Drop PDF here or click to upload</span>
+            <input type="file" id="pdfFile" name="pdf" accept=".pdf" required>
+        </div>
+        <div id="filePreview"></div>
 
-    <button type="submit" class="btn btn-success w-100 mt-3">Start Editing</button>
-</form>
-
+        <button type="submit" class="btn btn-success w-100 mt-3">Start Editing</button>
+    </form>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -113,9 +202,36 @@ function updatePreview(files) {
     });
 }
 
-// Dark Mode
+// Dark Mode Toggle - Fixed Version
 document.getElementById("themeToggle").addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
+    const themeToggle = document.getElementById("themeToggle");
+
+    if (document.body.classList.contains("dark-mode")) {
+        themeToggle.textContent = "☀️ Light Mode";
+        themeToggle.classList.remove("btn-outline-dark");
+        themeToggle.classList.add("btn-outline-light");
+    } else {
+        themeToggle.textContent = "🌙 Dark Mode";
+        themeToggle.classList.remove("btn-outline-light");
+        themeToggle.classList.add("btn-outline-dark");
+    }
+
+    // Save preference to localStorage
+    localStorage.setItem('darkMode', document.body.classList.contains("dark-mode"));
+});
+
+// Initialize dark mode state on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if dark mode was previously set
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+        const themeToggle = document.getElementById("themeToggle");
+        themeToggle.textContent = "☀️ Light Mode";
+        themeToggle.classList.remove("btn-outline-dark");
+        themeToggle.classList.add("btn-outline-light");
+    }
 });
 </script>
 

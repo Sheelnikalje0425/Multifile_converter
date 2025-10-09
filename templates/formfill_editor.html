@@ -10,18 +10,34 @@
             position: absolute;
             border: 1px dashed #333;
             background: rgba(255,255,200,0.7);
+            pointer-events: auto;
         }
         .field input {
             border: none;
             background: transparent;
             font-size: 14px;
             width: 100%;
+            height: 100%;
+            padding: 2px;
+            box-sizing: border-box;
         }
-        #save-btn { margin-top: 20px; }
+        #save-btn { margin-top: 20px; padding: 10px 20px; }
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
     <h2>Fill PDF Form</h2>
+    <div class="debug-info">
+        <div>Fields Count: <span id="field-count">0</span></div>
+        <button id="debug-btn">Show Field Data</button>
+    </div>
     <div id="pdf-container"></div>
     <button id="save-btn">Save & Download</button>
 
@@ -33,79 +49,265 @@
         const pdfInfo = {{ pdf_info|tojson }};
         const container = document.getElementById("pdf-container");
         const fields = [];
+        let pageViewports = []; // Store viewport info for each page
 
         // Load and render PDF
-        const url = "/formfill/file/" + pdfId;  // we’ll add this route next
+        const url = "/formfill/file/" + pdfId;
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.worker.min.js";
 
         async function renderPDF() {
-            const pdf = await pdfjsLib.getDocument(url).promise;
-            for (let i = 0; i < pdf.numPages; i++) {
-                const page = await pdf.getPage(i+1);
-                const viewport = page.getViewport({ scale: 1.2 });
+            try {
+                const pdf = await pdfjsLib.getDocument(url).promise;
+                console.log(`PDF loaded: ${pdf.numPages} pages`);
 
-                const canvas = document.createElement("canvas");
-                canvas.className = "pdf-page";
-                container.appendChild(canvas);
+                for (let i = 0; i < pdf.numPages; i++) {
+                    const page = await pdf.getPage(i + 1);
+                    const viewport = page.getViewport({ scale: 1.2 });
 
-                const ctx = canvas.getContext("2d");
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+                    // Store viewport for coordinate conversion
+                    pageViewports[i] = {
+                        viewport: viewport,
+                        width: viewport.width,
+                        height: viewport.height
+                    };
 
-                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                    const canvas = document.createElement("canvas");
+                    canvas.className = "pdf-page";
+                    canvas.setAttribute('data-page-number', i);
+                    container.appendChild(canvas);
 
-                // Overlay click handler
-                canvas.addEventListener("click", (e) => {
-                    const rect = canvas.getBoundingClientRect();
-                    const x = (e.clientX - rect.left) / canvas.width;
-                    const y = (e.clientY - rect.top) / canvas.height;
+                    const ctx = canvas.getContext("2d");
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
 
-                    addField(i, x, y, canvas);
-                });
+                    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                    // Overlay click handler
+                    canvas.addEventListener("click", (e) => {
+                        const rect = canvas.getBoundingClientRect();
+                        const clickX = e.clientX - rect.left;
+                        const clickY = e.clientY - rect.top;
+
+                        // Convert to normalized coordinates (0-1)
+                        const normalizedX = clickX / canvas.width;
+                        const normalizedY = clickY / canvas.height;
+
+                        console.log(`Page ${i} click:`, {
+                            absolute: { x: clickX, y: clickY },
+                            normalized: { x: normalizedX, y: normalizedY },
+                            canvas: { width: canvas.width, height: canvas.height }
+                        });
+
+                        addField(i, normalizedX, normalizedY, canvas);
+                    });
+                }
+            } catch (error) {
+                console.error("Error rendering PDF:", error);
+                alert("Error loading PDF: " + error.message);
             }
         }
 
-        function addField(page, nx, ny, canvas) {
+        function addField(page, normalizedX, normalizedY, canvas) {
             const field = document.createElement("div");
             field.className = "field";
-            field.style.left = (nx * canvas.width) + "px";
-            field.style.top = (ny * canvas.height) + "px";
-            field.style.width = "120px";
+
+            // Convert normalized coordinates back to absolute coordinates for display
+            const absoluteX = normalizedX * canvas.width;
+            const absoluteY = normalizedY * canvas.height;
+
+            field.style.left = absoluteX + "px";
+            field.style.top = absoluteY + "px";
+            field.style.width = "150px";
             field.style.height = "25px";
+            field.style.position = "absolute";
 
             const input = document.createElement("input");
             input.type = "text";
+            input.placeholder = "Enter text...";
             field.appendChild(input);
+
+            // Add delete button
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "×";
+            deleteBtn.style.position = "absolute";
+            deleteBtn.style.right = "-20px";
+            deleteBtn.style.top = "0";
+            deleteBtn.style.background = "red";
+            deleteBtn.style.color = "white";
+            deleteBtn.style.border = "none";
+            deleteBtn.style.cursor = "pointer";
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                container.removeChild(field);
+                const index = fields.findIndex(f => f.fieldElement === field);
+                if (index > -1) {
+                    fields.splice(index, 1);
+                    updateFieldCount();
+                }
+            };
+            field.appendChild(deleteBtn);
 
             container.appendChild(field);
 
-            fields.push({ page, nx, ny, input });
+            const fieldData = {
+                page: page,
+                nx: normalizedX,
+                ny: normalizedY,
+                input: input,
+                fieldElement: field,
+                absoluteX: absoluteX,
+                absoluteY: absoluteY
+            };
+
+            fields.push(fieldData);
+            updateFieldCount();
+
+            console.log("Field added:", fieldData);
+
+            // Focus the input
+            input.focus();
+        }
+
+        function updateFieldCount() {
+            document.getElementById('field-count').textContent = fields.length;
+        }
+
+        function validateFieldData() {
+            console.log("=== FIELD DATA VALIDATION ===");
+            console.log("Total fields:", fields.length);
+
+            const validationResults = fields.map((field, index) => {
+                const isValid = (
+                    field.page !== undefined &&
+                    field.nx >= 0 && field.nx <= 1 &&
+                    field.ny >= 0 && field.ny <= 1 &&
+                    field.input !== undefined
+                );
+
+                console.log(`Field ${index}:`, {
+                    page: field.page,
+                    normalizedX: field.nx,
+                    normalizedY: field.ny,
+                    value: field.input.value,
+                    absoluteX: field.absoluteX,
+                    absoluteY: field.absoluteY,
+                    isValid: isValid
+                });
+
+                return { index, isValid, field };
+            });
+
+            const invalidFields = validationResults.filter(r => !r.isValid);
+            if (invalidFields.length > 0) {
+                console.warn("Invalid fields found:", invalidFields);
+                return false;
+            }
+
+            return true;
         }
 
         document.getElementById("save-btn").addEventListener("click", async () => {
-            const overlays = fields.map(f => ({
-                page: f.page,
-                x: f.nx,
-                y: f.ny,
-                text: f.input.value,
-                font_size: 14,
-                color: "#000000"
-            }));
+            try {
+                // Validate data before sending
+                if (!validateFieldData()) {
+                    alert("Some fields have invalid data. Please check the console.");
+                    return;
+                }
 
-            const resp = await fetch(`/formfill/apply/${pdfId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ overlays })
-            });
+                if (fields.length === 0) {
+                    alert("No fields added. Please click on the PDF to add text fields.");
+                    return;
+                }
 
-            const blob = await resp.blob();
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "filled_" + pdfId + ".pdf";
-            link.click();
+                // Prepare overlay data with proper coordinates
+                const overlays = fields.map(f => {
+                    // Get the original PDF dimensions from viewport
+                    const viewport = pageViewports[f.page];
+                    if (!viewport) {
+                        console.warn(`No viewport found for page ${f.page}`);
+                        return null;
+                    }
+
+                    return {
+                        page: parseInt(f.page),
+                        x: parseFloat(f.nx),  // Normalized X (0-1)
+                        y: parseFloat(f.ny),  // Normalized Y (0-1)
+                        text: f.input.value || "",
+                        font_size: 14,
+                        color: "#000000",
+                        width: 150,  // Field width in pixels at render scale
+                        height: 25   // Field height in pixels at render scale
+                    };
+                }).filter(f => f !== null);
+
+                console.log("Sending data to server:", {
+                    pdf_id: pdfId,
+                    overlays: overlays
+                });
+
+                // Send data to server
+                const resp = await fetch(`/formfill/apply/${pdfId}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/pdf"
+                    },
+                    body: JSON.stringify({
+                        overlays: overlays,
+                        pdf_id: pdfId,
+                        scale: 1.2  // Include the scale used for rendering
+                    })
+                });
+
+                // Check response
+                if (!resp.ok) {
+                    const errorText = await resp.text();
+                    throw new Error(`Server error: ${resp.status} - ${errorText}`);
+                }
+
+                // Check content type
+                const contentType = resp.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/pdf')) {
+                    const errorData = await resp.text();
+                    console.error("Server response:", errorData);
+                    throw new Error(`Expected PDF but server returned: ${contentType}`);
+                }
+
+                // Create and trigger download
+                const blob = await resp.blob();
+                if (blob.size === 0) {
+                    throw new Error("Received empty PDF file");
+                }
+
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `filled_${pdfId}.pdf`;
+                link.style.display = "none";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Clean up URL object after download
+                setTimeout(() => URL.revokeObjectURL(link.href), 100);
+
+                console.log("PDF downloaded successfully");
+
+            } catch (error) {
+                console.error("Error saving PDF:", error);
+                alert("Error saving PDF: " + error.message);
+            }
         });
 
-        renderPDF();
+        // Debug button to show field data
+        document.getElementById("debug-btn").addEventListener("click", () => {
+            validateFieldData();
+        });
+
+        // Initialize
+        renderPDF().catch(error => {
+            console.error("Initialization error:", error);
+            alert("Failed to load PDF: " + error.message);
+        });
     </script>
 </body>
 </html>
