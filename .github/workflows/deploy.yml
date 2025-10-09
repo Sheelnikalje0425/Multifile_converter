@@ -20,20 +20,9 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           cd /var/www/multifile-convertor
-          
-          # Pull latest code
+          echo "🚀 Starting deployment..."
           git pull origin main
-          
-          # Activate virtual environment
           source venv/bin/activate
-          
-          # Install dependencies
           pip install -r requirements.txt
-          
-          # Create necessary directories
-          mkdir -p uploads converted static
-          
-          # Restart application
           sudo systemctl restart multifile-convertor
-          
-          echo "🚀 Multifile Convertor deployed successfully!"
+          echo "✅ Multifile Convertor deployed successfully!"
