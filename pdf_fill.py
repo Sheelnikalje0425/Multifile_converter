@@ -108,67 +108,81 @@ def get_pdf_page_info(pdf_id: str) -> Dict[str, Any]:
 def _parse_hex_color(hex_str: str) -> Tuple[float, float, float]:
     """
     Convert '#RRGGBB' to floats 0..1 for PyMuPDF.
-    Default black if invalid.
+    Enhanced with better error handling and default to black.
     """
     if not isinstance(hex_str, str):
-        return (0, 0, 0)
-    s = hex_str.strip()
+        print(f"Warning: Invalid color type, using black. Got: {type(hex_str)}")
+        return (0.0, 0.0, 0.0)  # Black
+
+    s = hex_str.strip().lower()
+
+    # Remove # if present
     if s.startswith("#"):
         s = s[1:]
-    if len(s) != 6:
-        return (0, 0, 0)
-    try:
-        r = int(s[0:2], 16) / 255.0
-        g = int(s[2:4], 16) / 255.0
-        b = int(s[4:6], 16) / 255.0
-        return (r, g, b)
-    except Exception:
-        return (0, 0, 0)
+
+    # Handle different color formats
+    if len(s) == 6:  # RRGGBB
+        try:
+            r = int(s[0:2], 16) / 255.0
+            g = int(s[2:4], 16) / 255.0
+            b = int(s[4:6], 16) / 255.0
+            print(f"Color parsed: {hex_str} -> RGB({r:.3f}, {g:.3f}, {b:.3f})")
+            return (r, g, b)
+        except Exception as e:
+            print(f"Warning: Color parsing failed for '{hex_str}', using black. Error: {e}")
+
+    elif len(s) == 3:  # RGB shorthand
+        try:
+            r = int(s[0] * 2, 16) / 255.0
+            g = int(s[1] * 2, 16) / 255.0
+            b = int(s[2] * 2, 16) / 255.0
+            print(f"Color parsed: {hex_str} -> RGB({r:.3f}, {g:.3f}, {b:.3f})")
+            return (r, g, b)
+        except Exception as e:
+            print(f"Warning: Color parsing failed for '{hex_str}', using black. Error: {e}")
+
+    else:
+        print(f"Warning: Unsupported color format '{hex_str}', using black")
+
+    return (0.0, 0.0, 0.0)  # Default to black
 
 
 def apply_text_overlays(
         pdf_id: str,
         overlays: List[Dict[str, Any]],
         default_font: str = "helv",  # built-in Helvetica
-        default_size: float = 12.0,
-        default_color: str = "#000000",
-        write_debug_json: bool = False
+        default_size: float = 14.0,  # Increased default size
+        default_color: str = "#000000",  # Black for better visibility
+        write_debug_json: bool = True
 ) -> bytes:
     """
-    Apply text overlays and return the new PDF bytes.
-
-    overlays example (JSON-like):
-    [
-      {
-        "page": 0,                 # 0-based page index
-        "x": 0.25,                 # normalized (0..1) from left
-        "y": 0.33,                 # normalized (0..1) from top
-        "text": "Sheel Nikalje",
-        "font_size": 14,           # optional (points)
-        "color": "#1f2937",        # optional hex
-        "align": "left"            # left|center|right (optional; default=left)
-      }
-    ]
-
-    Notes:
-    - Coordinates are normalized (0-1) from top-left of page
-    - PDF coordinate system: (0,0) is bottom-left, so we flip Y coordinate
+    Enhanced version with better text visibility and debugging
     """
     pdf_bytes = load_pdf_bytes(pdf_id)
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
     if write_debug_json:
-        # optional: save last overlays to a sidecar file for debugging
+        # Save debug information
         debug_dir = os.path.join("instance", "debug")
         os.makedirs(debug_dir, exist_ok=True)
-        with open(os.path.join(debug_dir, f"{pdf_id}.overlays.json"), "w", encoding="utf-8") as f:
-            json.dump(overlays, f, ensure_ascii=False, indent=2)
+        debug_file = os.path.join(debug_dir, f"{pdf_id}_overlays_debug.json")
+        with open(debug_file, "w", encoding="utf-8") as f:
+            json.dump({
+                "overlays": overlays,
+                "page_count": len(doc),
+                "timestamp": datetime.now().isoformat(),
+                "total_overlays": len(overlays)
+            }, f, ensure_ascii=False, indent=2)
+        print(f"📝 Debug data saved to: {debug_file}")
 
-    for item in overlays:
+    print(f"🔄 Processing {len(overlays)} overlays on {len(doc)} pages")
+
+    for item_idx, item in enumerate(overlays):
         try:
             page_index = int(item.get("page", 0))
             if page_index < 0 or page_index >= len(doc):
-                continue  # Skip invalid page indices
+                print(f"⚠️ Warning: Invalid page index {page_index}, skipping overlay {item_idx}")
+                continue
 
             page = doc[page_index]
             rect = page.rect
@@ -178,65 +192,89 @@ def apply_text_overlays(
             nx = float(item.get("x", 0))
             ny = float(item.get("y", 0))
 
+            # Validate coordinates
+            if nx < 0 or nx > 1 or ny < 0 or ny > 1:
+                print(f"⚠️ Warning: Invalid coordinates ({nx}, {ny}) for overlay {item_idx}, clamping to valid range")
+                nx = max(0.0, min(1.0, nx))
+                ny = max(0.0, min(1.0, ny))
+
             # Convert to PDF coordinates (0,0 is bottom-left)
-            x = max(0.0, min(1.0, nx)) * page_w
-            y = page_h - (max(0.0, min(1.0, ny)) * page_h)  # Flip Y coordinate
+            x = nx * page_w
+            y = page_h - (ny * page_h)  # Flip Y coordinate
 
             text = str(item.get("text", ""))
             if not text.strip():
+                print(f"⚠️ Warning: Empty text for overlay {item_idx} on page {page_index}")
                 continue
 
             font_size = float(item.get("font_size", default_size))
             color = _parse_hex_color(item.get("color", default_color))
             align = (item.get("align") or "left").lower()
 
-            # Calculate text width for alignment
+            print(f"📝 Adding text {item_idx}: '{text}' at ({x:.1f}, {y:.1f}) on page {page_index}")
+            print(f"   Font size: {font_size}, Color: {color}, Align: {align}")
+
+            # Method 1: Direct text insertion with explicit parameters
             try:
-                # Try the modern API first
-                text_width = page.get_text_length(text, fontname=default_font, fontsize=font_size)
-            except AttributeError:
+                page.insert_text(
+                    point=(x, y),
+                    text=text,
+                    fontsize=font_size,
+                    fontname=default_font,
+                    color=color,
+                    render_mode=0,  # Fill text (solid)
+                    overlay=True,
+                    rotate=0  # No rotation
+                )
+                print(f"✅ Text inserted successfully: '{text}'")
+
+            except Exception as e:
+                print(f"❌ Error inserting text: {e}")
+                # Fallback method with simpler parameters
                 try:
-                    # Fallback to older API
-                    text_width = fitz.get_text_length(text, fontname=default_font, fontsize=font_size)
-                except:
-                    # Rough estimation as last resort
-                    text_width = len(text) * (font_size * 0.5)
-
-            # Adjust x position based on alignment
-            if align == "center":
-                x = x - (text_width / 2)
-            elif align == "right":
-                x = x - text_width
-
-            # Ensure coordinates are within page bounds
-            x = max(0, min(x, page_w - text_width))
-            y = max(font_size, min(y, page_h))  # Keep text visible
-
-            # Insert text with proper rendering
-            page.insert_text(
-                point=(x, y),
-                text=text,
-                fontsize=font_size,
-                fontname=default_font,
-                color=color,
-                render_mode=0,  # Fill text (not outline)
-                overlay=True  # Ensure text is visible
-            )
-
-            print(f"Added text: '{text}' at ({x:.1f}, {y:.1f}) on page {page_index}")
+                    page.insert_text(
+                        point=(x, y),
+                        text=text,
+                        fontsize=font_size,
+                        fontname=default_font,
+                        color=color
+                    )
+                    print(f"✅ Text inserted using fallback method: '{text}'")
+                except Exception as fallback_error:
+                    print(f"❌ Fallback also failed: {fallback_error}")
+                    continue
 
         except Exception as e:
-            print(f"Overlay error on page {item.get('page', 0)}: {e}")
+            print(f"❌ Overlay error on page {item.get('page', 0)}: {e}")
             import traceback
             traceback.print_exc()
 
-    # Save the modified PDF
+    # Enhanced PDF saving with better compression settings
     out = io.BytesIO()
-    doc.save(out, garbage=4, deflate=True, clean=True)
+
+    # Try different save options for better compatibility
+    try:
+        doc.save(
+            out,
+            garbage=4,
+            deflate=True,
+            clean=True,
+            pretty=True  # Better formatting
+        )
+    except Exception as save_error:
+        print(f"⚠️ Standard save failed, trying alternative: {save_error}")
+        # Alternative save method
+        out = io.BytesIO()
+        doc.save(out)
+
     doc.close()
 
     out.seek(0)
     result_bytes = out.read()
-    print(f"PDF saved successfully, size: {len(result_bytes)} bytes")
+
+    print(f"✅ PDF saved successfully")
+    print(f"📊 Original size: {len(pdf_bytes)} bytes")
+    print(f"📊 Modified size: {len(result_bytes)} bytes")
+    print(f"📊 Size change: {len(result_bytes) - len(pdf_bytes)} bytes")
 
     return result_bytes

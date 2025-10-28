@@ -1,0 +1,16 @@
+{
+  "overlays": [
+    {
+      "page": 0,
+      "x": 0.7730769230769231,
+      "y": 0.21299999237060546,
+      "text": "sheel",
+      "font_size": 14,
+      "color": "#000000",
+      "align": "left"
+    }
+  ],
+  "page_count": 1,
+  "timestamp": "2025-10-28T23:13:57.311147",
+  "total_overlays": 1
+}

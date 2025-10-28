@@ -1,0 +1,16 @@
+{
+  "overlays": [
+    {
+      "page": 0,
+      "x": 0.37051282051282053,
+      "y": 0.948000005086263,
+      "text": "sheel sunil nikalje",
+      "font_size": 14,
+      "color": "#000000",
+      "align": "left"
+    }
+  ],
+  "page_count": 1,
+  "timestamp": "2025-10-28T23:27:09.920514",
+  "total_overlays": 1
+}

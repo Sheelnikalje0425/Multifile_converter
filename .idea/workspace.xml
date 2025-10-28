@@ -5,20 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e230ebde-0c82-4ed3-a531-876329071d72" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/scripts/setup.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/wsgi.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/workflows/deploy.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/deploy.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/instance/formfill/22c114701a9c4f2792092c5e6550da43.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/instance/formfill/3282d33fbf8642138f01991a03e0558e.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/instance/formfill/eb2fcf1d072640f38075d3cb72825b35.pdf" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/pdf_fill.py" beforeDir="false" afterPath="$PROJECT_DIR$/pdf_fill.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/style.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/templates/about.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/about.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/templates/formfill_editor.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/formfill_editor.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/formfill_home.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/formfill_home.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/templates/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/index.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -1,0 +1,16 @@
+{
+  "overlays": [
+    {
+      "page": 0,
+      "x": 0.11204481792717087,
+      "y": 0.7710891119324335,
+      "text": "sheel nikalje",
+      "font_size": 14,
+      "color": "#000000",
+      "align": "left"
+    }
+  ],
+  "page_count": 1,
+  "timestamp": "2025-10-28T23:52:42.094109",
+  "total_overlays": 1
+}

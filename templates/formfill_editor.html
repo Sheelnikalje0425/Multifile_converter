@@ -3,14 +3,21 @@
 <head>
     <title>PDF Form Editor</title>
     <style>
-        body { font-family: sans-serif; }
-        #pdf-container { position: relative; }
-        canvas.pdf-page { border: 1px solid #aaa; margin-bottom: 10px; }
+        body { font-family: sans-serif; margin: 20px; }
+        #pdf-container { position: relative; margin-bottom: 20px; }
+        canvas.pdf-page {
+            border: 1px solid #aaa;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
         .field {
             position: absolute;
-            border: 1px dashed #333;
+            border: 2px dashed #007bff;
             background: rgba(255,255,200,0.7);
             pointer-events: auto;
+            border-radius: 4px;
+            min-width: 150px;
+            min-height: 30px;
         }
         .field input {
             border: none;
@@ -18,28 +25,98 @@
             font-size: 14px;
             width: 100%;
             height: 100%;
-            padding: 2px;
+            padding: 5px;
             box-sizing: border-box;
+            font-family: Arial, sans-serif;
         }
-        #save-btn { margin-top: 20px; padding: 10px 20px; }
+        .field .delete-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+        }
+        #controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .btn {
+            margin: 5px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
         .debug-info {
             background: #f0f0f0;
-            padding: 10px;
+            padding: 15px;
             margin: 10px 0;
             border-radius: 5px;
             font-family: monospace;
             font-size: 12px;
+            border-left: 4px solid #007bff;
+        }
+        .coordinate-info {
+            background: #e9f7fe;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .coordinate-debug {
+            background: #fff3cd;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-size: 11px;
+            border-left: 3px solid #ffc107;
         }
     </style>
 </head>
 <body>
-    <h2>Fill PDF Form</h2>
-    <div class="debug-info">
-        <div>Fields Count: <span id="field-count">0</span></div>
-        <button id="debug-btn">Show Field Data</button>
+    <h2>📝 Fill PDF Form</h2>
+
+    <div id="controls">
+        <button class="btn btn-primary" onclick="addTestField()">Add Test Field</button>
+        <button class="btn btn-warning" onclick="debugFieldData()">Debug Fields</button>
+        <a href="/formfill/test/{{ pdf_id }}" class="btn btn-success" target="_blank">Test Visibility</a>
+        <a href="/formfill/debug/{{ pdf_id }}" class="btn btn-info" target="_blank">PDF Info</a>
     </div>
+
+    <div class="debug-info">
+        <div><strong>PDF ID:</strong> <span id="pdf-id">{{ pdf_id }}</span></div>
+        <div><strong>Fields Count:</strong> <span id="field-count">0</span></div>
+        <div><strong>Total Pages:</strong> <span id="page-count">{{ pdf_info.pages|length }}</span></div>
+        <div class="coordinate-info">
+            <strong>Click anywhere on the PDF to add text fields</strong><br>
+            <em>Fixed coordinate system: Text will appear exactly where you click!</em>
+        </div>
+        <div id="coordinate-debug" class="coordinate-debug">
+            Coordinate debug info will appear here when you click on the PDF
+        </div>
+    </div>
+
     <div id="pdf-container"></div>
-    <button id="save-btn">Save & Download</button>
+
+    <div style="margin-top: 20px;">
+        <button id="save-btn" class="btn btn-success" style="padding: 12px 24px; font-size: 16px;">
+            💾 Save & Download PDF
+        </button>
+    </div>
 
     <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
@@ -49,7 +126,86 @@
         const pdfInfo = {{ pdf_info|tojson }};
         const container = document.getElementById("pdf-container");
         const fields = [];
-        let pageViewports = []; // Store viewport info for each page
+        let pageViewports = [];
+
+        // Update field count display
+        function updateFieldCount() {
+            document.getElementById('field-count').textContent = fields.length;
+        }
+
+        // Update coordinate debug display
+        function updateCoordinateDebug(info) {
+            const debugDiv = document.getElementById('coordinate-debug');
+            debugDiv.innerHTML = `
+                <strong>Last Click Coordinates:</strong><br>
+                Display: (${info.displayX.toFixed(1)}, ${info.displayY.toFixed(1)})<br>
+                Normalized: (${info.normalizedX.toFixed(3)}, ${info.normalizedY.toFixed(3)})<br>
+                PDF Points: (${info.pdfX.toFixed(1)}, ${info.pdfY.toFixed(1)})<br>
+                Page: ${info.page}, Canvas: ${info.canvasWidth}×${info.canvasHeight}
+            `;
+        }
+
+        // Debug function to show field data
+        function debugFieldData() {
+            console.log("=== FIELD DATA DEBUG ===");
+            console.log("Total fields:", fields.length);
+            console.log("PDF Info:", pdfInfo);
+
+            const validationResults = fields.map((field, index) => {
+                const isValid = (
+                    field.page !== undefined &&
+                    field.nx >= 0 && field.nx <= 1 &&
+                    field.ny >= 0 && field.ny <= 1 &&
+                    field.input !== undefined
+                );
+
+                console.log(`Field ${index}:`, {
+                    page: field.page,
+                    normalizedX: field.nx,
+                    normalizedY: field.ny,
+                    pdfX: field.nx * field.originalPageWidth,
+                    pdfY: (1 - field.ny) * field.originalPageHeight, // Flipped for PDF
+                    value: field.input.value,
+                    isValid: isValid,
+                    text: field.input.value
+                });
+
+                return { index, isValid, field };
+            });
+
+            const invalidFields = validationResults.filter(r => !r.isValid);
+            if (invalidFields.length > 0) {
+                console.warn("❌ Invalid fields found:", invalidFields);
+                alert(`Warning: ${invalidFields.length} fields have invalid data. Check console for details.`);
+            } else {
+                console.log("✅ All fields have valid data");
+                alert("All fields are valid! Check console for details.");
+            }
+
+            return invalidFields.length === 0;
+        }
+
+        // Add a test field for debugging
+        function addTestField() {
+            if (pageViewports.length === 0) {
+                alert("Please wait for PDF to load first");
+                return;
+            }
+
+            // Add test fields at different positions
+            const testFields = [
+                { page: 0, nx: 0.1, ny: 0.1, text: "TOP-LEFT TEST" },
+                { page: 0, nx: 0.5, ny: 0.5, text: "CENTER TEST" },
+                { page: 0, nx: 0.8, ny: 0.8, text: "BOTTOM-RIGHT TEST" }
+            ];
+
+            testFields.forEach(testField => {
+                const canvas = document.querySelector(`canvas[data-page-number="${testField.page}"]`);
+                if (canvas) {
+                    addField(testField.page, testField.nx, testField.ny, canvas, testField.text);
+                }
+            });
+        }
 
         // Load and render PDF
         const url = "/formfill/file/" + pdfId;
@@ -57,6 +213,7 @@
 
         async function renderPDF() {
             try {
+                console.log("Loading PDF from:", url);
                 const pdf = await pdfjsLib.getDocument(url).promise;
                 console.log(`PDF loaded: ${pdf.numPages} pages`);
 
@@ -68,12 +225,16 @@
                     pageViewports[i] = {
                         viewport: viewport,
                         width: viewport.width,
-                        height: viewport.height
+                        height: viewport.height,
+                        originalWidth: pdfInfo.pages[i]?.width || viewport.width,
+                        originalHeight: pdfInfo.pages[i]?.height || viewport.height
                     };
 
                     const canvas = document.createElement("canvas");
                     canvas.className = "pdf-page";
                     canvas.setAttribute('data-page-number', i);
+                    canvas.setAttribute('data-page-width', viewport.width);
+                    canvas.setAttribute('data-page-height', viewport.height);
                     container.appendChild(canvas);
 
                     const ctx = canvas.getContext("2d");
@@ -82,32 +243,58 @@
 
                     await page.render({ canvasContext: ctx, viewport: viewport }).promise;
 
-                    // Overlay click handler
+                    // Add click handler for this canvas
                     canvas.addEventListener("click", (e) => {
                         const rect = canvas.getBoundingClientRect();
                         const clickX = e.clientX - rect.left;
                         const clickY = e.clientY - rect.top;
 
-                        // Convert to normalized coordinates (0-1)
+                        // Convert to normalized coordinates (0-1) - TOP-LEFT origin
                         const normalizedX = clickX / canvas.width;
                         const normalizedY = clickY / canvas.height;
 
-                        console.log(`Page ${i} click:`, {
-                            absolute: { x: clickX, y: clickY },
-                            normalized: { x: normalizedX, y: normalizedY },
-                            canvas: { width: canvas.width, height: canvas.height }
+                        // Calculate PDF coordinates (BOTTOM-LEFT origin)
+                        const pdfX = normalizedX * pageViewports[i].originalWidth;
+                        const pdfY = (1 - normalizedY) * pageViewports[i].originalHeight;
+
+                        console.log(`📌 Page ${i} click:`, {
+                            displayCoords: { x: clickX, y: clickY },
+                            normalizedCoords: { x: normalizedX, y: normalizedY },
+                            pdfCoords: { x: pdfX, y: pdfY },
+                            canvasSize: { width: canvas.width, height: canvas.height },
+                            originalPageSize: {
+                                width: pageViewports[i].originalWidth,
+                                height: pageViewports[i].originalHeight
+                            }
+                        });
+
+                        // Update debug display
+                        updateCoordinateDebug({
+                            displayX: clickX,
+                            displayY: clickY,
+                            normalizedX: normalizedX,
+                            normalizedY: normalizedY,
+                            pdfX: pdfX,
+                            pdfY: pdfY,
+                            page: i,
+                            canvasWidth: canvas.width,
+                            canvasHeight: canvas.height
                         });
 
                         addField(i, normalizedX, normalizedY, canvas);
                     });
+
+                    console.log(`✅ Page ${i} rendered: ${viewport.width}x${viewport.height}`);
                 }
+
+                console.log("🎉 PDF rendering completed");
             } catch (error) {
-                console.error("Error rendering PDF:", error);
+                console.error("❌ Error rendering PDF:", error);
                 alert("Error loading PDF: " + error.message);
             }
         }
 
-        function addField(page, normalizedX, normalizedY, canvas) {
+        function addField(page, normalizedX, normalizedY, canvas, initialText = "") {
             const field = document.createElement("div");
             field.className = "field";
 
@@ -117,25 +304,19 @@
 
             field.style.left = absoluteX + "px";
             field.style.top = absoluteY + "px";
-            field.style.width = "150px";
-            field.style.height = "25px";
-            field.style.position = "absolute";
+            field.style.width = "200px";
+            field.style.height = "35px";
 
             const input = document.createElement("input");
             input.type = "text";
-            input.placeholder = "Enter text...";
+            input.placeholder = "Click to type...";
+            input.value = initialText;
             field.appendChild(input);
 
             // Add delete button
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "×";
-            deleteBtn.style.position = "absolute";
-            deleteBtn.style.right = "-20px";
-            deleteBtn.style.top = "0";
-            deleteBtn.style.background = "red";
-            deleteBtn.style.color = "white";
-            deleteBtn.style.border = "none";
-            deleteBtn.style.cursor = "pointer";
+            deleteBtn.className = "delete-btn";
             deleteBtn.onclick = (e) => {
                 e.stopPropagation();
                 container.removeChild(field);
@@ -156,94 +337,98 @@
                 input: input,
                 fieldElement: field,
                 absoluteX: absoluteX,
-                absoluteY: absoluteY
+                absoluteY: absoluteY,
+                canvas: canvas,
+                originalPageWidth: pageViewports[page].originalWidth,
+                originalPageHeight: pageViewports[page].originalHeight
             };
 
             fields.push(fieldData);
             updateFieldCount();
 
-            console.log("Field added:", fieldData);
+            console.log("✅ Field added:", {
+                page: page,
+                normalized: `(${normalizedX.toFixed(3)}, ${normalizedY.toFixed(3)})`,
+                display: `(${absoluteX.toFixed(1)}, ${absoluteY.toFixed(1)})`,
+                pdf: `(${(normalizedX * pageViewports[page].originalWidth).toFixed(1)}, ${((1 - normalizedY) * pageViewports[page].originalHeight).toFixed(1)})`,
+                text: initialText || "(empty)"
+            });
 
             // Focus the input
             input.focus();
-        }
 
-        function updateFieldCount() {
-            document.getElementById('field-count').textContent = fields.length;
+            // Select all text if it's a test field
+            if (initialText) {
+                input.select();
+            }
         }
 
         function validateFieldData() {
             console.log("=== FIELD DATA VALIDATION ===");
-            console.log("Total fields:", fields.length);
-
-            const validationResults = fields.map((field, index) => {
+            const validFields = fields.filter(field => {
                 const isValid = (
                     field.page !== undefined &&
                     field.nx >= 0 && field.nx <= 1 &&
                     field.ny >= 0 && field.ny <= 1 &&
-                    field.input !== undefined
+                    field.input.value.trim() !== ""
                 );
 
-                console.log(`Field ${index}:`, {
-                    page: field.page,
-                    normalizedX: field.nx,
-                    normalizedY: field.ny,
-                    value: field.input.value,
-                    absoluteX: field.absoluteX,
-                    absoluteY: field.absoluteY,
-                    isValid: isValid
-                });
-
-                return { index, isValid, field };
+                if (!isValid) {
+                    console.warn("Invalid field:", field);
+                }
+                return isValid;
             });
 
-            const invalidFields = validationResults.filter(r => !r.isValid);
-            if (invalidFields.length > 0) {
-                console.warn("Invalid fields found:", invalidFields);
-                return false;
-            }
-
-            return true;
+            console.log(`Valid fields: ${validFields.length}/${fields.length}`);
+            return validFields;
         }
 
         document.getElementById("save-btn").addEventListener("click", async () => {
             try {
+                console.log("=== SAVING PDF ===");
+
                 // Validate data before sending
-                if (!validateFieldData()) {
-                    alert("Some fields have invalid data. Please check the console.");
+                const validFields = validateFieldData();
+
+                if (validFields.length === 0) {
+                    alert("No valid fields to save. Please:\n1. Click on the PDF to add fields\n2. Enter text in the fields\n3. Make sure fields have valid positions");
                     return;
                 }
 
-                if (fields.length === 0) {
-                    alert("No fields added. Please click on the PDF to add text fields.");
-                    return;
-                }
+                // Prepare overlay data with PROPER PDF coordinates
+                const overlays = validFields.map(f => {
+                    // Convert normalized coordinates to PDF coordinates
+                    const pdfX = f.nx; // X stays the same (0-1 normalized)
+                    const pdfY = 1 - f.ny; // Flip Y coordinate for PDF (bottom-left origin)
 
-                // Prepare overlay data with proper coordinates
-                const overlays = fields.map(f => {
-                    // Get the original PDF dimensions from viewport
-                    const viewport = pageViewports[f.page];
-                    if (!viewport) {
-                        console.warn(`No viewport found for page ${f.page}`);
-                        return null;
-                    }
+                    console.log(`📤 Sending field:`, {
+                        page: f.page,
+                        normalized: `(${f.nx.toFixed(3)}, ${f.ny.toFixed(3)})`,
+                        pdfCoords: `(${pdfX.toFixed(3)}, ${pdfY.toFixed(3)})`,
+                        text: f.input.value
+                    });
 
                     return {
                         page: parseInt(f.page),
-                        x: parseFloat(f.nx),  // Normalized X (0-1)
-                        y: parseFloat(f.ny),  // Normalized Y (0-1)
-                        text: f.input.value || "",
+                        x: parseFloat(pdfX),  // Normalized X (0-1) - same for PDF
+                        y: parseFloat(pdfY),  // Normalized Y (0-1) - FLIPPED for PDF
+                        text: f.input.value.trim(),
                         font_size: 14,
-                        color: "#000000",
-                        width: 150,  // Field width in pixels at render scale
-                        height: 25   // Field height in pixels at render scale
+                        color: "#000000",  // Black for maximum visibility
+                        align: "left"
                     };
-                }).filter(f => f !== null);
+                });
 
                 console.log("Sending data to server:", {
                     pdf_id: pdfId,
+                    overlays_count: overlays.length,
                     overlays: overlays
                 });
+
+                // Show loading state
+                const saveBtn = document.getElementById("save-btn");
+                saveBtn.textContent = "⏳ Processing...";
+                saveBtn.disabled = true;
 
                 // Send data to server
                 const resp = await fetch(`/formfill/apply/${pdfId}`, {
@@ -254,8 +439,7 @@
                     },
                     body: JSON.stringify({
                         overlays: overlays,
-                        pdf_id: pdfId,
-                        scale: 1.2  // Include the scale used for rendering
+                        pdf_id: pdfId
                     })
                 });
 
@@ -281,7 +465,7 @@
 
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = `filled_${pdfId}.pdf`;
+                link.download = `filled_form_${pdfId}.pdf`;
                 link.style.display = "none";
                 document.body.appendChild(link);
                 link.click();
@@ -290,22 +474,25 @@
                 // Clean up URL object after download
                 setTimeout(() => URL.revokeObjectURL(link.href), 100);
 
-                console.log("PDF downloaded successfully");
+                console.log("✅ PDF downloaded successfully");
+                alert("✅ PDF downloaded successfully! Check your downloads folder.");
 
             } catch (error) {
-                console.error("Error saving PDF:", error);
+                console.error("❌ Error saving PDF:", error);
                 alert("Error saving PDF: " + error.message);
+            } finally {
+                // Reset button state
+                const saveBtn = document.getElementById("save-btn");
+                saveBtn.textContent = "💾 Save & Download PDF";
+                saveBtn.disabled = false;
             }
         });
 
-        // Debug button to show field data
-        document.getElementById("debug-btn").addEventListener("click", () => {
-            validateFieldData();
-        });
-
         // Initialize
+        console.log("🚀 Initializing PDF Editor...");
+        console.log("PDF Info:", pdfInfo);
         renderPDF().catch(error => {
-            console.error("Initialization error:", error);
+            console.error("❌ Initialization error:", error);
             alert("Failed to load PDF: " + error.message);
         });
     </script>

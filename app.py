@@ -7,7 +7,8 @@ import tempfile
 import shutil
 from datetime import datetime, timedelta
 
-from pdf_fill import save_pdf_temp, load_pdf_bytes, get_pdf_page_info, apply_text_overlays, pdf_storage
+from pdf_fill import save_pdf_temp, load_pdf_bytes, get_pdf_page_info, apply_text_overlays, pdf_storage, \
+    get_storage_stats
 
 from flask import Flask, render_template, request, send_file, redirect, jsonify
 from PIL import Image, ImageDraw, ImageFont
@@ -395,6 +396,9 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/about')
+def about():
+    return render_template('about.html')
 # =========================
 # Routes: Convert (existing features)
 # =========================
@@ -650,6 +654,52 @@ def formfill_apply(pdf_id):
     except ValueError:
         return jsonify({"error": "PDF not found or session expired"}), 404
 
+
+# Add this to your existing app.py routes, before the __main__ block
+
+@app.route("/formfill/test/<pdf_id>")
+def formfill_test(pdf_id):
+    """Test route to add simple text and verify it works"""
+    try:
+        # Simple test overlay - large text in center of first page
+        test_overlays = [{
+            "page": 0,
+            "x": 0.5,  # Center X
+            "y": 0.5,  # Center Y
+            "text": "TEST TEXT - SHOULD BE VISIBLE",
+            "font_size": 24,
+            "color": "#FF0000",  # Red color for high visibility
+            "align": "center"
+        }]
+
+        filled_pdf = apply_text_overlays(pdf_id, test_overlays)
+
+        return send_file(
+            io.BytesIO(filled_pdf),
+            as_attachment=True,
+            download_name=f"test_visible_{pdf_id}.pdf",
+            mimetype="application/pdf"
+        )
+    except Exception as e:
+        return f"Test failed: {str(e)}", 500
+
+
+@app.route("/formfill/debug/<pdf_id>")
+def formfill_debug(pdf_id):
+    """Debug route to check PDF info"""
+    try:
+        info = get_pdf_page_info(pdf_id)
+        stats = get_storage_stats()
+
+        return jsonify({
+            "pdf_id": pdf_id,
+            "page_info": info,
+            "storage_stats": stats,
+            "total_pages": len(info['pages']),
+            "status": "ok"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
 
 # =========================
 # Run
